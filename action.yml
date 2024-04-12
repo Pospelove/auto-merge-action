@@ -1,0 +1,13 @@
+name: 'Greeting'
+description: 'Greet someone and log the greeting'
+inputs:
+  name:
+    description: 'Who to greet'
+    required: true
+    default: 'World'
+outputs:
+  greeting:
+    description: 'A greeting to someone'
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
