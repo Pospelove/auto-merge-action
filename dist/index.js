@@ -23518,7 +23518,10 @@ var fs = __toESM(require("fs"));
 async function run() {
   try {
     const repositories = JSON.parse(core.getInput("repositories"));
-    const path = core.getInput("path");
+    let path = core.getInput("path");
+    if (!path.endsWith("/")) {
+      path += "/";
+    }
     for (const repository of repositories) {
       const { repo, labels, token, owner } = repository;
       console.log(`Repository: ${repo}, Labels: ${labels.join(", ")}`);
@@ -23564,15 +23567,21 @@ async function run() {
         console.log(`Applying patch to the repository`);
         applyPatches(patchContent, {
           loadFile(index, callback) {
-            console.log(`Loading file ${index.oldFileName}`);
-            callback(null, fs.readFileSync(index.oldFileName, "utf8"));
+            let oldFileName = index.oldFileName;
+            oldFileName = oldFileName.replace(/a\//, path);
+            console.log(`Loading file ${oldFileName}`);
+            callback(null, fs.readFileSync(oldFileName, "utf8"));
           },
           patched(index, content, callback) {
+            let newFileName = index.newFileName;
+            newFileName = newFileName.replace(/b\//, path);
+            let oldFileName = index.oldFileName;
+            oldFileName = oldFileName.replace(/a\//, path);
             console.log(`Patching file ${index.oldFileName}`);
-            fs.writeFileSync(index.newFileName, content);
-            if (index.oldFileName !== index.newFileName) {
-              console.log(`Renaming file ${index.oldFileName} to ${index.newFileName}`);
-              fs.unlinkSync(index.oldFileName);
+            fs.writeFileSync(newFileName, content);
+            if (oldFileName !== newFileName) {
+              console.log(`Renaming file ${oldFileName} to ${newFileName}`);
+              fs.unlinkSync(oldFileName);
             }
             callback(null, content);
           },

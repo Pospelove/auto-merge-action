@@ -20,7 +20,13 @@ type PR = any;
 async function run() {
   try {
     const repositories: Repository[] = JSON.parse(core.getInput('repositories'));
-    const path: string = core.getInput('path');
+
+    let path: string = core.getInput('path');
+
+    // important for replace 'a' and 'b' in diff
+    if (!path.endsWith('/')) {
+      path += '/';
+    }
 
     for (const repository of repositories) {
       const { repo, labels, token, owner } = repository;
@@ -85,15 +91,28 @@ async function run() {
 
         diff.applyPatches(patchContent, {
           loadFile(index: diff.ParsedDiff, callback: (err: any, data: string) => void) {
-            console.log(`Loading file ${index.oldFileName}`);
-            callback(null, fs.readFileSync(index.oldFileName!, "utf8"));
+            
+            let oldFileName = index.oldFileName!;
+            // replace 'a' with actual repository path
+            oldFileName = oldFileName.replace(/a\//, path);
+
+            console.log(`Loading file ${oldFileName}`);
+            callback(null, fs.readFileSync(oldFileName, "utf8"));
           },
           patched(index: diff.ParsedDiff, content: string, callback: (err: any, data: string) => void) {
+            let newFileName = index.newFileName!;
+            // replace 'b' with actual repository path
+            newFileName = newFileName.replace(/b\//, path);
+
+            let oldFileName = index.oldFileName!;
+            // replace 'a' with actual repository path
+            oldFileName = oldFileName.replace(/a\//, path);
+
             console.log(`Patching file ${index.oldFileName}`);
-            fs.writeFileSync(index.newFileName!, content);
-            if (index.oldFileName !== index.newFileName) {
-              console.log(`Renaming file ${index.oldFileName} to ${index.newFileName}`);
-              fs.unlinkSync(index.oldFileName!);
+            fs.writeFileSync(newFileName, content);
+            if (oldFileName !== newFileName) {
+              console.log(`Renaming file ${oldFileName} to ${newFileName}`);
+              fs.unlinkSync(oldFileName!);
             }
             callback(null, content);
           },
