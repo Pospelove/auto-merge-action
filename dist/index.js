@@ -23570,6 +23570,10 @@ async function run() {
             let oldFileName = index.oldFileName;
             oldFileName = oldFileName.replace(/a\//, path);
             console.log(`Loading file ${oldFileName}`);
+            if (oldFileName === "/dev/null") {
+              callback(null, "");
+              return;
+            }
             callback(null, fs.readFileSync(oldFileName, "utf8"));
           },
           patched(index, content, callback) {
@@ -23577,12 +23581,22 @@ async function run() {
             newFileName = newFileName.replace(/b\//, path);
             let oldFileName = index.oldFileName;
             oldFileName = oldFileName.replace(/a\//, path);
-            console.log(`Patching file ${index.oldFileName}`);
-            fs.writeFileSync(newFileName, content);
-            if (oldFileName !== newFileName) {
+            console.log(`Patching file: new file name - ${newFileName}, old file name - ${oldFileName}`);
+            if (newFileName === "/dev/null") {
+              console.log(`Deleting file ${oldFileName}`);
+              fs.unlinkSync(oldFileName);
+              callback(null, content);
+              return;
+            }
+            if (oldFileName !== newFileName && oldFileName !== "/dev/null") {
               console.log(`Renaming file ${oldFileName} to ${newFileName}`);
               fs.unlinkSync(oldFileName);
+              fs.writeFileSync(newFileName, content);
+              callback(null, content);
+              return;
             }
+            console.log(`Writing to file ${newFileName}`);
+            fs.writeFileSync(newFileName, content);
             callback(null, content);
           },
           complete(err) {
