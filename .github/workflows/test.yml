@@ -15,4 +15,8 @@ jobs:
       - name: Merge Pull Requests
         uses: Pospelove/auto-merge-action@main
         with:
-          repositories: '[]'
+          repositories: |
+          {
+            "repo": "skyrim-multiplayer/skymp"
+            "labels": ["merge-to:indev"]
+          }
