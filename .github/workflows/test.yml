@@ -9,9 +9,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-
       - name: Checkout skyrim-multiplayer/skymp
         uses: actions/checkout@v3
         with:
@@ -31,3 +28,8 @@ jobs:
                 "labels": ["merge-to:indev"]
               }
             ]
+      - name: Upload archive with merged changes
+        uses: actions/upload-artifact@v2
+        with:
+          name: merged-changes
+          path: skyrim-multiplayer/skymp
