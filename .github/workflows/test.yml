@@ -12,13 +12,22 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
+      - name: Checkout skyrim-multiplayer/skymp
+        uses: actions/checkout@v3
+        with:
+          repository: 'skyrim-multiplayer/skymp'
+          ref: 'main'
+          path: 'skyrim-multiplayer/skymp'
+
       - name: Merge Pull Requests
         uses: Pospelove/auto-merge-action@main
         with:
+          path: 'skyrim-multiplayer/skymp'
           repositories: |
             [
               {
-                "repo": "skyrim-multiplayer/skymp",
+                "owner": "skyrim-multiplayer",
+                "repo": "skymp",
                 "labels": ["merge-to:indev"]
               }
             ]
