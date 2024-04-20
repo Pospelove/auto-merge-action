@@ -1,0 +1,18 @@
+name: Test Workflow
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Merge Pull Requests
+        uses: Pospelove/auto-merge-action@main
+        with:
+          repositories: '[]'

@@ -1,9 +1,17 @@
-import * as core from '@actions/core';
+const core = require('@actions/core');
 
-try {
-  const name = core.getInput('name');
-  console.log(`Hello ${name}!`);
-  core.setOutput("greeting", `Hello ${name}!`);
-} catch (error) {
-  core.setFailed(`Action failed with error ${error}`);
+async function run() {
+  try {
+    const repositories = JSON.parse(core.getInput('repositories'));
+    
+    for (const repo of repositories) {
+      const { repo: repositoryName, labels } = repo;
+      console.log(`Repository: ${repositoryName}, Labels: ${labels.join(', ')}`);
+      // ...
+    }
+  } catch (error) {
+    core.setFailed(`Action failed with error: ${error}`);
+  }
 }
+
+run();

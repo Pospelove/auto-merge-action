@@ -1,13 +1,11 @@
-name: 'Greeting'
-description: 'Greet someone and log the greeting'
+name: 'Auto-Merge Action'
+description: 'Automatically checks out and merges pull requests from specified repositories with specified labels.'
 inputs:
-  name:
-    description: 'Who to greet'
+  repositories:
+    description: 'JSON string containing repositories and their corresponding labels to process.'
     required: true
-    default: 'World'
-outputs:
-  greeting:
-    description: 'A greeting to someone'
+    default: '[]'
+
 runs:
   using: 'node20'
-  main: 'dist/index.js'
+  main: 'index.js'
