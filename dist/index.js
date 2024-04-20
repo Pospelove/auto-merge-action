@@ -23567,7 +23567,7 @@ async function run() {
         console.log(`Applying patch to the repository`);
         applyPatches(patchContent, {
           loadFile(index, callback) {
-            let oldFileName = index.oldFileName;
+            let oldFileName = index.oldFileName || "/dev/null";
             oldFileName = oldFileName.replace(/a\//, path);
             console.log(`Loading file ${oldFileName}`);
             if (oldFileName === "/dev/null") {
@@ -23577,9 +23577,9 @@ async function run() {
             callback(null, fs.readFileSync(oldFileName, "utf8"));
           },
           patched(index, content, callback) {
-            let newFileName = index.newFileName;
+            let newFileName = index.newFileName || "/dev/null";
             newFileName = newFileName.replace(/b\//, path);
-            let oldFileName = index.oldFileName;
+            let oldFileName = index.oldFileName || "/dev/null";
             oldFileName = oldFileName.replace(/a\//, path);
             console.log(`Patching file: new file name - ${newFileName}, old file name - ${oldFileName}`);
             if (newFileName === "/dev/null") {

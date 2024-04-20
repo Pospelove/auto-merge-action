@@ -92,7 +92,7 @@ async function run() {
         diff.applyPatches(patchContent, {
           loadFile(index: diff.ParsedDiff, callback: (err: any, data: string) => void) {
 
-            let oldFileName = index.oldFileName!;
+            let oldFileName = index.oldFileName || "/dev/null";
             // replace 'a' with actual repository path
             oldFileName = oldFileName.replace(/a\//, path);
 
@@ -106,11 +106,11 @@ async function run() {
             callback(null, fs.readFileSync(oldFileName, "utf8"));
           },
           patched(index: diff.ParsedDiff, content: string, callback: (err: any, data: string) => void) {
-            let newFileName = index.newFileName!;
+            let newFileName = index.newFileName || "/dev/null";
             // replace 'b' with actual repository path
             newFileName = newFileName.replace(/b\//, path);
 
-            let oldFileName = index.oldFileName!;
+            let oldFileName = index.oldFileName || "/dev/null";
             // replace 'a' with actual repository path
             oldFileName = oldFileName.replace(/a\//, path);
 
