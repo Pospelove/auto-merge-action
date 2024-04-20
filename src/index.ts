@@ -6,6 +6,8 @@ import * as isomorphicGit from 'isomorphic-git';
 
 import * as diff from "diff";
 
+import * as exec from '@actions/exec';
+
 import * as fs from "fs";
 
 interface Repository {
@@ -89,60 +91,11 @@ async function run() {
         const patchContent = patch.data as unknown as string;
         console.log(`Applying patch to the repository`);
 
-        diff.applyPatches(patchContent, {
-          loadFile(index: diff.ParsedDiff, callback: (err: any, data: string) => void) {
-            console.log(`loadFile`, index);
+        // create patch file in temp directory
+        const patchFilePath = '/tmp/patch.diff';
+        fs.writeFileSync(patchFilePath, patchContent);
 
-            let oldFileName = index.oldFileName!;
-            // replace 'a' with actual repository path
-            oldFileName = oldFileName.replace(/a\//, path);
-
-            if (oldFileName === "/dev/null") {
-              callback(null, "");
-              return;
-            }
-
-            callback(null, fs.readFileSync(oldFileName, "utf8"));
-          },
-          patched(index: diff.ParsedDiff, content: string, callback: (err: any, data: string) => void) {
-            console.log(`patched`, index);
-
-            let newFileName = index.newFileName!;
-            // replace 'b' with actual repository path
-            newFileName = newFileName.replace(/b\//, path);
-
-            let oldFileName = index.oldFileName!;
-            // replace 'a' with actual repository path
-            oldFileName = oldFileName.replace(/a\//, path);
-
-            if (newFileName === "/dev/null") {
-              console.log(`Deleting file ${oldFileName}`);
-              fs.unlinkSync(oldFileName);
-              callback(null, content);
-              return;
-            }
-
-            if (oldFileName !== newFileName && oldFileName !== "/dev/null") {
-              console.log(`Renaming file ${oldFileName} to ${newFileName}`);
-              fs.unlinkSync(oldFileName!);
-              fs.writeFileSync(newFileName, content);
-              callback(null, content);
-              return;
-            }
-
-            console.log(`Writing to file ${newFileName}`);
-            fs.writeFileSync(newFileName, content);
-            callback(null, content);
-          },
-          complete(err: any) {
-            if (err) {
-              console.error(`Failed to apply patch: ${err}`);
-              throw err;
-            } else {
-              console.log(`Patch applied successfully`);
-            }
-          }
-        });
+        await exec.exec(`git apply ${patchFilePath}`, [], { cwd: path });
 
         console.log(`Patch applied successfully`);
       }
