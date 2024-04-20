@@ -519,7 +519,7 @@ var require_file_command = __commonJS({
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.prepareKeyValueMessage = exports2.issueFileCommand = void 0;
-    var fs = __importStar(require("fs"));
+    var fs2 = __importStar(require("fs"));
     var os = __importStar(require("os"));
     var uuid_1 = (init_esm_node(), __toCommonJS(esm_node_exports));
     var utils_1 = require_utils();
@@ -528,10 +528,10 @@ var require_file_command = __commonJS({
       if (!filePath) {
         throw new Error(`Unable to find environment variable for file command ${command}`);
       }
-      if (!fs.existsSync(filePath)) {
+      if (!fs2.existsSync(filePath)) {
         throw new Error(`Missing file at path: ${filePath}`);
       }
-      fs.appendFileSync(filePath, `${utils_1.toCommandValue(message)}${os.EOL}`, {
+      fs2.appendFileSync(filePath, `${utils_1.toCommandValue(message)}${os.EOL}`, {
         encoding: "utf8"
       });
     }
@@ -23487,8 +23487,34 @@ function applyPatch(source, uniDiff) {
   }
   return lines.join("");
 }
+function applyPatches(uniDiff, options) {
+  if (typeof uniDiff === "string") {
+    uniDiff = parsePatch(uniDiff);
+  }
+  var currentIndex = 0;
+  function processIndex() {
+    var index = uniDiff[currentIndex++];
+    if (!index) {
+      return options.complete();
+    }
+    options.loadFile(index, function(err, data) {
+      if (err) {
+        return options.complete(err);
+      }
+      var updatedContent = applyPatch(data, index, options);
+      options.patched(index, updatedContent, function(err2) {
+        if (err2) {
+          return options.complete(err2);
+        }
+        processIndex();
+      });
+    });
+  }
+  processIndex();
+}
 
 // src/index.ts
+var fs = __toESM(require("fs"));
 async function run() {
   try {
     const repositories = JSON.parse(core.getInput("repositories"));
@@ -23536,7 +23562,29 @@ async function run() {
         });
         const patchContent = patch.data;
         console.log(`Applying patch to the repository`);
-        applyPatch(path, patchContent);
+        applyPatches(patchContent, {
+          loadFile(index, callback) {
+            console.log(`Loading file ${index.oldFileName}`);
+            callback(null, fs.readFileSync(index.oldFileName, "utf8"));
+          },
+          patched(index, content, callback) {
+            console.log(`Patching file ${index.oldFileName}`);
+            fs.writeFileSync(index.newFileName, content);
+            if (index.oldFileName !== index.newFileName) {
+              console.log(`Renaming file ${index.oldFileName} to ${index.newFileName}`);
+              fs.unlinkSync(index.oldFileName);
+            }
+            callback(null, content);
+          },
+          complete(err) {
+            if (err) {
+              console.error(`Failed to apply patch: ${err}`);
+              throw err;
+            } else {
+              console.log(`Patch applied successfully`);
+            }
+          }
+        });
         console.log(`Patch applied successfully`);
       }
     }

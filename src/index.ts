@@ -6,6 +6,8 @@ import * as isomorphicGit from 'isomorphic-git';
 
 import * as diff from "diff";
 
+import * as fs from "fs";
+
 interface Repository {
   owner: string,
   repo: string;
@@ -81,7 +83,29 @@ async function run() {
         const patchContent = patch.data as unknown as string;
         console.log(`Applying patch to the repository`);
 
-        diff.applyPatch(path, patchContent);
+        diff.applyPatches(patchContent, {
+          loadFile(index: diff.ParsedDiff, callback: (err: any, data: string) => void) {
+            console.log(`Loading file ${index.oldFileName}`);
+            callback(null, fs.readFileSync(index.oldFileName!, "utf8"));
+          },
+          patched(index: diff.ParsedDiff, content: string, callback: (err: any, data: string) => void) {
+            console.log(`Patching file ${index.oldFileName}`);
+            fs.writeFileSync(index.newFileName!, content);
+            if (index.oldFileName !== index.newFileName) {
+              console.log(`Renaming file ${index.oldFileName} to ${index.newFileName}`);
+              fs.unlinkSync(index.oldFileName!);
+            }
+            callback(null, content);
+          },
+          complete(err: any) {
+            if (err) {
+              console.error(`Failed to apply patch: ${err}`);
+              throw err;
+            } else {
+              console.log(`Patch applied successfully`);
+            }
+          }
+        });
 
         console.log(`Patch applied successfully`);
       }
