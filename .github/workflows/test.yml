@@ -16,7 +16,9 @@ jobs:
         uses: Pospelove/auto-merge-action@main
         with:
           repositories: |
-            {
-              "repo": "skyrim-multiplayer/skymp",
-              "labels": ["merge-to:indev"]
-            }
+            [
+              {
+                "repo": "skyrim-multiplayer/skymp",
+                "labels": ["merge-to:indev"]
+              }
+            ]
