@@ -17,6 +17,6 @@ jobs:
         with:
           repositories: |
             {
-              "repo": "skyrim-multiplayer/skymp"
+              "repo": "skyrim-multiplayer/skymp",
               "labels": ["merge-to:indev"]
             }
