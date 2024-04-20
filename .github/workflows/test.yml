@@ -30,6 +30,7 @@ jobs:
               {
                 "owner": "skyrim-multiplayer",
                 "repo": "skymp5-patches",
+                "token": "${{ secrets.PATCHES_GITHUB_TOKEN }}"
                 "labels": ["merge-to:indev"]
               }
             ]
