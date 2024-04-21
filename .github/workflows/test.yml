@@ -6,7 +6,10 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
 
     steps:
       - name: Checkout skyrim-multiplayer/skymp
@@ -34,6 +37,7 @@ jobs:
                 "labels": ["merge-to:indev"]
               }
             ]
+
       - name: Upload archive with merged changes
         uses: actions/upload-artifact@v2
         with:
