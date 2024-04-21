@@ -10,6 +10,10 @@ import * as exec from '@actions/exec';
 
 import * as fs from "fs";
 
+import * as os from "os";
+
+import * as pathModule from "path";
+
 interface Repository {
   owner: string,
   repo: string;
@@ -92,7 +96,7 @@ async function run() {
         console.log(`Applying patch to the repository`);
 
         // create patch file in temp directory
-        const patchFilePath = '/tmp/patch.diff';
+        const patchFilePath = pathModule.join(os.tmpdir(), 'patch.diff');
         fs.writeFileSync(patchFilePath, patchContent);
 
         await exec.exec(`git apply ${patchFilePath}`, [], { cwd: path });
