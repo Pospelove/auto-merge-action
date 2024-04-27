@@ -24018,7 +24018,7 @@ async function run() {
           outStream: process.stdout,
           errStream: process.stderr
         };
-        const res = await exec.exec(`git apply --reject ${patchFilePath}`, [], options);
+        const res = await exec.exec(`git apply --reject --verbose --check ${patchFilePath}`, [], options);
         if (res !== 0) {
           console.log("Git exited with code ", res);
           throw new Error("Failed to apply the patch correctly.");

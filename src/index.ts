@@ -110,8 +110,7 @@ async function run() {
           errStream: process.stderr
         };
 
-        // Adding the --reject option to git apply
-        const res = await exec.exec(`git apply --reject ${patchFilePath}`, [], options);
+        const res = await exec.exec(`git apply --reject --verbose --check ${patchFilePath}`, [], options);
 
         if (res !== 0) {
           console.log("Git exited with code ", res);
