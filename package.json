@@ -11,6 +11,7 @@
   "devDependencies": {
     "@types/diff": "^5.2.0",
     "@types/node": "^20.12.7",
+    "@types/stream-buffers": "^3.0.7",
     "esbuild": "^0.20.2",
     "typescript": "^5.4.5"
   },
@@ -19,6 +20,7 @@
     "@actions/exec": "^1.1.1",
     "@octokit/rest": "^20.1.0",
     "diff": "^5.2.0",
-    "isomorphic-git": "^1.25.7"
+    "isomorphic-git": "^1.25.7",
+    "stream-buffers": "^3.0.2"
   }
 }

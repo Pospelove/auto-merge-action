@@ -14,6 +14,8 @@ import * as os from "os";
 
 import * as pathModule from "path";
 
+import * as streamBuffer from "stream-buffers";
+
 interface Repository {
   owner: string,
   repo: string;
@@ -104,21 +106,38 @@ async function run() {
         console.log("Current directory:", path);
         console.log("Current directory absolute: ", pathModule.resolve(path));
 
+        const gitApplyStdout = new streamBuffer.WritableStreamBuffer();
+        const gitApplyStderr = new streamBuffer.WritableStreamBuffer();
+
         const options = {
           cwd: path,
-          outStream: process.stdout,
-          errStream: process.stderr
+          outStream: gitApplyStdout,
+          errStream: gitApplyStderr
         };
 
         const res = await exec.exec(`git apply --reject --verbose --check ${patchFilePath}`, [], options);
 
         if (res !== 0) {
-          console.log("Git exited with code ", res);
+          console.log("Git exited with code", res);
           throw new Error("Failed to apply the patch correctly.");
         } else {
-          console.log("Patch applied successfully");
+          console.log("Git exited with code", res);
         }
 
+        const gitApplyStdoutContentsString = gitApplyStdout.getContentsAsString('utf8');
+
+        if (gitApplyStdoutContentsString === false) {
+          throw new Error("Failed to read stdout of git apply");
+        }
+
+        console.log(gitApplyStdoutContentsString);
+
+        // Find smth like Skipped patch 'src/logic/listeners/fatigueSystem.ts'.
+        const skippedFiles = gitApplyStdoutContentsString.match(/Skipped patch '(.+?)'/g);
+
+        if (skippedFiles) {
+          throw new Error("Failed to apply the patch correctly. Skipped files: " + skippedFiles.join(", "));
+        }
       }
     }
   } catch (error) {
