@@ -102,7 +102,7 @@ async function run() {
         console.log("Current directory:", path);
         console.log("Current directory absulute: ", pathModule.resolve(path));
 
-        const res = await exec.exec(`git apply ${patchFilePath}`, [], { cwd: path });
+        const res = await exec.exec(`git apply ${patchFilePath}`, [], { cwd: path, outStream: process.stdout, errStream: process.stderr });
 
         console.log("Git exited with code ", res);
 
