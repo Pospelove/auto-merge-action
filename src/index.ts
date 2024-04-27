@@ -99,14 +99,27 @@ async function run() {
         const patchFilePath = pathModule.join(os.tmpdir(), 'patch.diff');
         fs.writeFileSync(patchFilePath, patchContent);
 
+        const exec = require('@actions/exec');
+
         console.log("Current directory:", path);
-        console.log("Current directory absulute: ", pathModule.resolve(path));
+        console.log("Current directory absolute: ", pathModule.resolve(path));
 
-        const res = await exec.exec(`git apply ${patchFilePath}`, [], { cwd: path, outStream: process.stdout, errStream: process.stderr });
+        const options = {
+          cwd: path,
+          outStream: process.stdout,
+          errStream: process.stderr
+        };
 
-        console.log("Git exited with code ", res);
+        // Adding the --reject option to git apply
+        const res = await exec.exec(`git apply --reject ${patchFilePath}`, [], options);
 
-        console.log(`Patch applied successfully`);
+        if (res !== 0) {
+          console.log("Git exited with code ", res);
+          console.error("Failed to apply the patch correctly.");
+        } else {
+          console.log("Patch applied successfully");
+        }
+
       }
     }
   } catch (error) {

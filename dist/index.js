@@ -23903,7 +23903,7 @@ var require_exec = __commonJS({
     exports2.getExecOutput = exports2.exec = void 0;
     var string_decoder_1 = require("string_decoder");
     var tr = __importStar(require_toolrunner());
-    function exec3(commandLine, args, options) {
+    function exec(commandLine, args, options) {
       return __awaiter(this, void 0, void 0, function* () {
         const commandArgs = tr.argStringToArray(commandLine);
         if (commandArgs.length === 0) {
@@ -23915,7 +23915,7 @@ var require_exec = __commonJS({
         return runner.exec();
       });
     }
-    exports2.exec = exec3;
+    exports2.exec = exec;
     function getExecOutput(commandLine, args, options) {
       var _a, _b;
       return __awaiter(this, void 0, void 0, function* () {
@@ -23938,7 +23938,7 @@ var require_exec = __commonJS({
           }
         };
         const listeners = Object.assign(Object.assign({}, options === null || options === void 0 ? void 0 : options.listeners), { stdout: stdOutListener, stderr: stdErrListener });
-        const exitCode = yield exec3(commandLine, args, Object.assign(Object.assign({}, options), { listeners }));
+        const exitCode = yield exec(commandLine, args, Object.assign(Object.assign({}, options), { listeners }));
         stdout += stdoutDecoder.end();
         stderr += stderrDecoder.end();
         return {
@@ -23955,7 +23955,6 @@ var require_exec = __commonJS({
 // src/index.ts
 var core = __toESM(require_core());
 var import_rest = __toESM(require_dist_node12());
-var exec = __toESM(require_exec());
 var fs = __toESM(require("fs"));
 var os = __toESM(require("os"));
 var pathModule = __toESM(require("path"));
@@ -24011,11 +24010,21 @@ async function run() {
         console.log(`Applying patch to the repository`);
         const patchFilePath = pathModule.join(os.tmpdir(), "patch.diff");
         fs.writeFileSync(patchFilePath, patchContent);
+        const exec = require_exec();
         console.log("Current directory:", path);
-        console.log("Current directory absulute: ", pathModule.resolve(path));
-        const res = await exec.exec(`git apply ${patchFilePath}`, [], { cwd: path, outStream: process.stdout, errStream: process.stderr });
-        console.log("Git exited with code ", res);
-        console.log(`Patch applied successfully`);
+        console.log("Current directory absolute: ", pathModule.resolve(path));
+        const options = {
+          cwd: path,
+          outStream: process.stdout,
+          errStream: process.stderr
+        };
+        const res = await exec.exec(`git apply --reject ${patchFilePath}`, [], options);
+        if (res !== 0) {
+          console.log("Git exited with code ", res);
+          console.error("Failed to apply the patch correctly.");
+        } else {
+          console.log("Patch applied successfully");
+        }
       }
     }
   } catch (error) {
