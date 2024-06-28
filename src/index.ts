@@ -136,9 +136,10 @@ async function run() {
         console.log("res: ", res);
         if (res !== 0) {
           const rejFiles = findRejFiles(path);
-          console.error("Failed to apply the patch. Found .rej files: ", rejFiles);
-          console.error("Please take a look at these files. They contain the rejected parts of the patch.");
-          process.exit(1);
+          // console.error("Failed to apply the patch. Found .rej files: ", rejFiles);
+          // console.error("Please take a look at these files. They contain the rejected parts of the patch.");
+          // process.exit(1);
+          throw new Error("Failed to apply the patch. Found .rej files: " + rejFiles.join(", "));
         }
 
         const gitApplyStdoutContentsString = gitApplyStdout.getContentsAsString('utf8');
