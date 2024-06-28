@@ -24214,6 +24214,7 @@ async function run() {
           ignoreReturnCode: true
         };
         const res = await exec.exec(`git apply --reject --verbose ${patchFilePath}`, [], options);
+        \u0441onsole.log("res: ", res);
         if (res !== 0) {
           const rejFiles = findRejFiles(path);
           console.error("Failed to apply the patch. Found .rej files: ", rejFiles);
