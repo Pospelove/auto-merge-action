@@ -133,13 +133,9 @@ async function run() {
         };
 
         const res = await exec.exec(`git apply --reject --verbose ${patchFilePath}`, [], options);
-        console.log("res: ", res);
         if (res !== 0) {
           const rejFiles = findRejFiles(path);
-          // console.error("Failed to apply the patch. Found .rej files: ", rejFiles);
-          // console.error("Please take a look at these files. They contain the rejected parts of the patch.");
-          // process.exit(1);
-          throw new Error("Failed to apply the patch. Found .rej files: " + rejFiles.join(", "));
+          throw new Error("Failed to apply the patch. Found .rej files: " + rejFiles.join(", ") + ". Please take a look at these files. They contain the rejected parts of the patch.");
         }
 
         const gitApplyStdoutContentsString = gitApplyStdout.getContentsAsString('utf8');
