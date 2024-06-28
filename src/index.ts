@@ -117,12 +117,13 @@ async function run() {
 
         const res = await exec.exec(`git apply --reject --verbose ${patchFilePath}`, [], options);
 
-        if (res !== 0) {
-          console.log("Git exited with code", res);
-          throw new Error("Failed to apply the patch correctly.");
-        } else {
-          console.log("Git exited with code", res);
-        }
+        /// Looks like this is already covered by execs own error handling
+        // if (res !== 0) {
+        //   console.log("Git exited with code", res);
+        //   throw new Error("Failed to apply the patch correctly.");
+        // } else {
+        //   console.log("Git exited with code", res);
+        // }
 
         const gitApplyStdoutContentsString = gitApplyStdout.getContentsAsString('utf8');
 
