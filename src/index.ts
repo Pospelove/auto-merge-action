@@ -25,6 +25,22 @@ interface Repository {
 
 type PR = any;
 
+// Function to find .rej files recursively
+function findRejFiles(dir: string) {
+  let results = new Array<string>();
+  const list = fs.readdirSync(dir);
+  list.forEach(file => {
+    file = pathModule.resolve(dir, file);
+    const stat = fs.statSync(file);
+    if (stat && stat.isDirectory()) {
+      results = results.concat(findRejFiles(file));
+    } else if (file.endsWith('.rej')) {
+      results.push(file);
+    }
+  });
+  return results;
+}
+
 async function run() {
   try {
     const repositories: Repository[] = JSON.parse(core.getInput('repositories'));
@@ -115,15 +131,15 @@ async function run() {
           errStream: gitApplyStderr
         };
 
-        const res = await exec.exec(`git apply --reject --verbose ${patchFilePath}`, [], options);
-
-        /// Looks like this is already covered by execs own error handling
-        // if (res !== 0) {
-        //   console.log("Git exited with code", res);
-        //   throw new Error("Failed to apply the patch correctly.");
-        // } else {
-        //   console.log("Git exited with code", res);
-        // }
+        try {
+          await exec.exec(`git apply --reject --verbose ${patchFilePath}`, [], options);
+        }
+        catch (e) {
+          const rejFiles = findRejFiles(path);
+          console.error("Failed to apply the patch. Found .rej files: ", rejFiles);
+          console.error("Please take a look at these files. They contain the rejected parts of the patch.")
+          throw e;
+        }
 
         const gitApplyStdoutContentsString = gitApplyStdout.getContentsAsString('utf8');
 

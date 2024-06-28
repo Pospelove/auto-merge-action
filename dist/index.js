@@ -24136,6 +24136,20 @@ var fs = __toESM(require("fs"));
 var os = __toESM(require("os"));
 var pathModule = __toESM(require("path"));
 var streamBuffer = __toESM(require_streambuffer());
+function findRejFiles(dir) {
+  let results = new Array();
+  const list = fs.readdirSync(dir);
+  list.forEach((file) => {
+    file = pathModule.resolve(dir, file);
+    const stat = fs.statSync(file);
+    if (stat && stat.isDirectory()) {
+      results = results.concat(findRejFiles(file));
+    } else if (file.endsWith(".rej")) {
+      results.push(file);
+    }
+  });
+  return results;
+}
 async function run() {
   try {
     const repositories = JSON.parse(core.getInput("repositories"));
@@ -24198,7 +24212,14 @@ async function run() {
           outStream: gitApplyStdout,
           errStream: gitApplyStderr
         };
-        const res = await exec.exec(`git apply --reject --verbose ${patchFilePath}`, [], options);
+        try {
+          await exec.exec(`git apply --reject --verbose ${patchFilePath}`, [], options);
+        } catch (e) {
+          const rejFiles = findRejFiles(path);
+          console.error("Failed to apply the patch. Found .rej files: ", rejFiles);
+          console.error("Please take a look at these files. They contain the rejected parts of the patch.");
+          throw e;
+        }
         const gitApplyStdoutContentsString = gitApplyStdout.getContentsAsString("utf8");
         if (gitApplyStdoutContentsString === false) {
           throw new Error("Failed to read stdout of git apply");
