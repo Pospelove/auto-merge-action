@@ -22920,183 +22920,6 @@ var require_dist_node12 = __commonJS({
   }
 });
 
-// node_modules/stream-buffers/lib/constants.js
-var require_constants6 = __commonJS({
-  "node_modules/stream-buffers/lib/constants.js"(exports2, module2) {
-    "use strict";
-    module2.exports = {
-      DEFAULT_INITIAL_SIZE: 8 * 1024,
-      DEFAULT_INCREMENT_AMOUNT: 8 * 1024,
-      DEFAULT_FREQUENCY: 1,
-      DEFAULT_CHUNK_SIZE: 1024
-    };
-  }
-});
-
-// node_modules/stream-buffers/lib/readable_streambuffer.js
-var require_readable_streambuffer = __commonJS({
-  "node_modules/stream-buffers/lib/readable_streambuffer.js"(exports2, module2) {
-    "use strict";
-    var stream = require("stream");
-    var constants = require_constants6();
-    var util = require("util");
-    var ReadableStreamBuffer = module2.exports = function(opts) {
-      var that = this;
-      opts = opts || {};
-      stream.Readable.call(this, opts);
-      this.stopped = false;
-      var frequency = opts.hasOwnProperty("frequency") ? opts.frequency : constants.DEFAULT_FREQUENCY;
-      var chunkSize = opts.chunkSize || constants.DEFAULT_CHUNK_SIZE;
-      var initialSize = opts.initialSize || constants.DEFAULT_INITIAL_SIZE;
-      var incrementAmount = opts.incrementAmount || constants.DEFAULT_INCREMENT_AMOUNT;
-      var size = 0;
-      var buffer = new Buffer(initialSize);
-      var allowPush = false;
-      var sendData = function() {
-        var amount = Math.min(chunkSize, size);
-        var sendMore = false;
-        if (amount > 0) {
-          var chunk = null;
-          chunk = new Buffer(amount);
-          buffer.copy(chunk, 0, 0, amount);
-          sendMore = that.push(chunk) !== false;
-          allowPush = sendMore;
-          buffer.copy(buffer, 0, amount, size);
-          size -= amount;
-        }
-        if (size === 0 && that.stopped) {
-          that.push(null);
-        }
-        if (sendMore) {
-          sendData.timeout = setTimeout(sendData, frequency);
-        } else {
-          sendData.timeout = null;
-        }
-      };
-      this.stop = function() {
-        if (this.stopped) {
-          throw new Error("stop() called on already stopped ReadableStreamBuffer");
-        }
-        this.stopped = true;
-        if (size === 0) {
-          this.push(null);
-        }
-      };
-      this.size = function() {
-        return size;
-      };
-      this.maxSize = function() {
-        return buffer.length;
-      };
-      var increaseBufferIfNecessary = function(incomingDataSize) {
-        if (buffer.length - size < incomingDataSize) {
-          var factor = Math.ceil((incomingDataSize - (buffer.length - size)) / incrementAmount);
-          var newBuffer = new Buffer(buffer.length + incrementAmount * factor);
-          buffer.copy(newBuffer, 0, 0, size);
-          buffer = newBuffer;
-        }
-      };
-      var kickSendDataTask = function() {
-        if (!sendData.timeout && allowPush) {
-          sendData.timeout = setTimeout(sendData, frequency);
-        }
-      };
-      this.put = function(data, encoding) {
-        if (that.stopped) {
-          throw new Error("Tried to write data to a stopped ReadableStreamBuffer");
-        }
-        if (Buffer.isBuffer(data)) {
-          increaseBufferIfNecessary(data.length);
-          data.copy(buffer, size, 0);
-          size += data.length;
-        } else {
-          data = data + "";
-          var dataSizeInBytes = Buffer.byteLength(data);
-          increaseBufferIfNecessary(dataSizeInBytes);
-          buffer.write(data, size, encoding || "utf8");
-          size += dataSizeInBytes;
-        }
-        kickSendDataTask();
-      };
-      this._read = function() {
-        allowPush = true;
-        kickSendDataTask();
-      };
-    };
-    util.inherits(ReadableStreamBuffer, stream.Readable);
-  }
-});
-
-// node_modules/stream-buffers/lib/writable_streambuffer.js
-var require_writable_streambuffer = __commonJS({
-  "node_modules/stream-buffers/lib/writable_streambuffer.js"(exports2, module2) {
-    "use strict";
-    var util = require("util");
-    var stream = require("stream");
-    var constants = require_constants6();
-    var WritableStreamBuffer2 = module2.exports = function(opts) {
-      opts = opts || {};
-      opts.decodeStrings = true;
-      stream.Writable.call(this, opts);
-      var initialSize = opts.initialSize || constants.DEFAULT_INITIAL_SIZE;
-      var incrementAmount = opts.incrementAmount || constants.DEFAULT_INCREMENT_AMOUNT;
-      var buffer = new Buffer(initialSize);
-      var size = 0;
-      this.size = function() {
-        return size;
-      };
-      this.maxSize = function() {
-        return buffer.length;
-      };
-      this.getContents = function(length) {
-        if (!size)
-          return false;
-        var data = new Buffer(Math.min(length || size, size));
-        buffer.copy(data, 0, 0, data.length);
-        if (data.length < size)
-          buffer.copy(buffer, 0, data.length);
-        size -= data.length;
-        return data;
-      };
-      this.getContentsAsString = function(encoding, length) {
-        if (!size)
-          return false;
-        var data = buffer.toString(encoding || "utf8", 0, Math.min(length || size, size));
-        var dataLength = Buffer.byteLength(data);
-        if (dataLength < size)
-          buffer.copy(buffer, 0, dataLength);
-        size -= dataLength;
-        return data;
-      };
-      var increaseBufferIfNecessary = function(incomingDataSize) {
-        if (buffer.length - size < incomingDataSize) {
-          var factor = Math.ceil((incomingDataSize - (buffer.length - size)) / incrementAmount);
-          var newBuffer = new Buffer(buffer.length + incrementAmount * factor);
-          buffer.copy(newBuffer, 0, 0, size);
-          buffer = newBuffer;
-        }
-      };
-      this._write = function(chunk, encoding, callback) {
-        increaseBufferIfNecessary(chunk.length);
-        chunk.copy(buffer, size, 0);
-        size += chunk.length;
-        callback();
-      };
-    };
-    util.inherits(WritableStreamBuffer2, stream.Writable);
-  }
-});
-
-// node_modules/stream-buffers/lib/streambuffer.js
-var require_streambuffer = __commonJS({
-  "node_modules/stream-buffers/lib/streambuffer.js"(exports2, module2) {
-    "use strict";
-    module2.exports = require_constants6();
-    module2.exports.ReadableStreamBuffer = require_readable_streambuffer();
-    module2.exports.WritableStreamBuffer = require_writable_streambuffer();
-  }
-});
-
 // node_modules/@actions/io/lib/io-util.js
 var require_io_util = __commonJS({
   "node_modules/@actions/io/lib/io-util.js"(exports2) {
@@ -24080,7 +23903,7 @@ var require_exec = __commonJS({
     exports2.getExecOutput = exports2.exec = void 0;
     var string_decoder_1 = require("string_decoder");
     var tr = __importStar(require_toolrunner());
-    function exec(commandLine, args, options) {
+    function exec3(commandLine, args, options) {
       return __awaiter(this, void 0, void 0, function* () {
         const commandArgs = tr.argStringToArray(commandLine);
         if (commandArgs.length === 0) {
@@ -24092,7 +23915,7 @@ var require_exec = __commonJS({
         return runner.exec();
       });
     }
-    exports2.exec = exec;
+    exports2.exec = exec3;
     function getExecOutput(commandLine, args, options) {
       var _a, _b;
       return __awaiter(this, void 0, void 0, function* () {
@@ -24115,7 +23938,7 @@ var require_exec = __commonJS({
           }
         };
         const listeners = Object.assign(Object.assign({}, options === null || options === void 0 ? void 0 : options.listeners), { stdout: stdOutListener, stderr: stdErrListener });
-        const exitCode = yield exec(commandLine, args, Object.assign(Object.assign({}, options), { listeners }));
+        const exitCode = yield exec3(commandLine, args, Object.assign(Object.assign({}, options), { listeners }));
         stdout += stdoutDecoder.end();
         stderr += stderrDecoder.end();
         return {
@@ -24129,9 +23952,187 @@ var require_exec = __commonJS({
   }
 });
 
+// node_modules/stream-buffers/lib/constants.js
+var require_constants6 = __commonJS({
+  "node_modules/stream-buffers/lib/constants.js"(exports2, module2) {
+    "use strict";
+    module2.exports = {
+      DEFAULT_INITIAL_SIZE: 8 * 1024,
+      DEFAULT_INCREMENT_AMOUNT: 8 * 1024,
+      DEFAULT_FREQUENCY: 1,
+      DEFAULT_CHUNK_SIZE: 1024
+    };
+  }
+});
+
+// node_modules/stream-buffers/lib/readable_streambuffer.js
+var require_readable_streambuffer = __commonJS({
+  "node_modules/stream-buffers/lib/readable_streambuffer.js"(exports2, module2) {
+    "use strict";
+    var stream = require("stream");
+    var constants = require_constants6();
+    var util = require("util");
+    var ReadableStreamBuffer = module2.exports = function(opts) {
+      var that = this;
+      opts = opts || {};
+      stream.Readable.call(this, opts);
+      this.stopped = false;
+      var frequency = opts.hasOwnProperty("frequency") ? opts.frequency : constants.DEFAULT_FREQUENCY;
+      var chunkSize = opts.chunkSize || constants.DEFAULT_CHUNK_SIZE;
+      var initialSize = opts.initialSize || constants.DEFAULT_INITIAL_SIZE;
+      var incrementAmount = opts.incrementAmount || constants.DEFAULT_INCREMENT_AMOUNT;
+      var size = 0;
+      var buffer = new Buffer(initialSize);
+      var allowPush = false;
+      var sendData = function() {
+        var amount = Math.min(chunkSize, size);
+        var sendMore = false;
+        if (amount > 0) {
+          var chunk = null;
+          chunk = new Buffer(amount);
+          buffer.copy(chunk, 0, 0, amount);
+          sendMore = that.push(chunk) !== false;
+          allowPush = sendMore;
+          buffer.copy(buffer, 0, amount, size);
+          size -= amount;
+        }
+        if (size === 0 && that.stopped) {
+          that.push(null);
+        }
+        if (sendMore) {
+          sendData.timeout = setTimeout(sendData, frequency);
+        } else {
+          sendData.timeout = null;
+        }
+      };
+      this.stop = function() {
+        if (this.stopped) {
+          throw new Error("stop() called on already stopped ReadableStreamBuffer");
+        }
+        this.stopped = true;
+        if (size === 0) {
+          this.push(null);
+        }
+      };
+      this.size = function() {
+        return size;
+      };
+      this.maxSize = function() {
+        return buffer.length;
+      };
+      var increaseBufferIfNecessary = function(incomingDataSize) {
+        if (buffer.length - size < incomingDataSize) {
+          var factor = Math.ceil((incomingDataSize - (buffer.length - size)) / incrementAmount);
+          var newBuffer = new Buffer(buffer.length + incrementAmount * factor);
+          buffer.copy(newBuffer, 0, 0, size);
+          buffer = newBuffer;
+        }
+      };
+      var kickSendDataTask = function() {
+        if (!sendData.timeout && allowPush) {
+          sendData.timeout = setTimeout(sendData, frequency);
+        }
+      };
+      this.put = function(data, encoding) {
+        if (that.stopped) {
+          throw new Error("Tried to write data to a stopped ReadableStreamBuffer");
+        }
+        if (Buffer.isBuffer(data)) {
+          increaseBufferIfNecessary(data.length);
+          data.copy(buffer, size, 0);
+          size += data.length;
+        } else {
+          data = data + "";
+          var dataSizeInBytes = Buffer.byteLength(data);
+          increaseBufferIfNecessary(dataSizeInBytes);
+          buffer.write(data, size, encoding || "utf8");
+          size += dataSizeInBytes;
+        }
+        kickSendDataTask();
+      };
+      this._read = function() {
+        allowPush = true;
+        kickSendDataTask();
+      };
+    };
+    util.inherits(ReadableStreamBuffer, stream.Readable);
+  }
+});
+
+// node_modules/stream-buffers/lib/writable_streambuffer.js
+var require_writable_streambuffer = __commonJS({
+  "node_modules/stream-buffers/lib/writable_streambuffer.js"(exports2, module2) {
+    "use strict";
+    var util = require("util");
+    var stream = require("stream");
+    var constants = require_constants6();
+    var WritableStreamBuffer2 = module2.exports = function(opts) {
+      opts = opts || {};
+      opts.decodeStrings = true;
+      stream.Writable.call(this, opts);
+      var initialSize = opts.initialSize || constants.DEFAULT_INITIAL_SIZE;
+      var incrementAmount = opts.incrementAmount || constants.DEFAULT_INCREMENT_AMOUNT;
+      var buffer = new Buffer(initialSize);
+      var size = 0;
+      this.size = function() {
+        return size;
+      };
+      this.maxSize = function() {
+        return buffer.length;
+      };
+      this.getContents = function(length) {
+        if (!size)
+          return false;
+        var data = new Buffer(Math.min(length || size, size));
+        buffer.copy(data, 0, 0, data.length);
+        if (data.length < size)
+          buffer.copy(buffer, 0, data.length);
+        size -= data.length;
+        return data;
+      };
+      this.getContentsAsString = function(encoding, length) {
+        if (!size)
+          return false;
+        var data = buffer.toString(encoding || "utf8", 0, Math.min(length || size, size));
+        var dataLength = Buffer.byteLength(data);
+        if (dataLength < size)
+          buffer.copy(buffer, 0, dataLength);
+        size -= dataLength;
+        return data;
+      };
+      var increaseBufferIfNecessary = function(incomingDataSize) {
+        if (buffer.length - size < incomingDataSize) {
+          var factor = Math.ceil((incomingDataSize - (buffer.length - size)) / incrementAmount);
+          var newBuffer = new Buffer(buffer.length + incrementAmount * factor);
+          buffer.copy(newBuffer, 0, 0, size);
+          buffer = newBuffer;
+        }
+      };
+      this._write = function(chunk, encoding, callback) {
+        increaseBufferIfNecessary(chunk.length);
+        chunk.copy(buffer, size, 0);
+        size += chunk.length;
+        callback();
+      };
+    };
+    util.inherits(WritableStreamBuffer2, stream.Writable);
+  }
+});
+
+// node_modules/stream-buffers/lib/streambuffer.js
+var require_streambuffer = __commonJS({
+  "node_modules/stream-buffers/lib/streambuffer.js"(exports2, module2) {
+    "use strict";
+    module2.exports = require_constants6();
+    module2.exports.ReadableStreamBuffer = require_readable_streambuffer();
+    module2.exports.WritableStreamBuffer = require_writable_streambuffer();
+  }
+});
+
 // src/index.ts
 var core = __toESM(require_core());
 var import_rest = __toESM(require_dist_node12());
+var exec = __toESM(require_exec());
 var fs = __toESM(require("fs"));
 var os = __toESM(require("os"));
 var pathModule = __toESM(require("path"));
@@ -24202,7 +24203,6 @@ async function run() {
         console.log(`Applying patch to the repository`);
         const patchFilePath = pathModule.join(os.tmpdir(), "patch.diff");
         fs.writeFileSync(patchFilePath, patchContent);
-        const exec = require_exec();
         console.log("Current directory:", path);
         console.log("Current directory absolute: ", pathModule.resolve(path));
         const gitApplyStdout = new streamBuffer.WritableStreamBuffer();
@@ -24210,15 +24210,15 @@ async function run() {
         const options = {
           cwd: path,
           outStream: gitApplyStdout,
-          errStream: gitApplyStderr
+          errStream: gitApplyStderr,
+          ignoreReturnCode: true
         };
-        try {
-          await exec.exec(`git apply --reject --verbose ${patchFilePath}`, [], options);
-        } catch (e) {
+        const res = await exec.exec(`git apply --reject --verbose ${patchFilePath}`, [], options);
+        if (res !== 0) {
           const rejFiles = findRejFiles(path);
           console.error("Failed to apply the patch. Found .rej files: ", rejFiles);
           console.error("Please take a look at these files. They contain the rejected parts of the patch.");
-          throw e;
+          process.exit(1);
         }
         const gitApplyStdoutContentsString = gitApplyStdout.getContentsAsString("utf8");
         if (gitApplyStdoutContentsString === false) {

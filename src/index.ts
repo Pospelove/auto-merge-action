@@ -117,7 +117,7 @@ async function run() {
         const patchFilePath = pathModule.join(os.tmpdir(), 'patch.diff');
         fs.writeFileSync(patchFilePath, patchContent);
 
-        const exec = require('@actions/exec');
+        // const exec = require('@actions/exec');
 
         console.log("Current directory:", path);
         console.log("Current directory absolute: ", pathModule.resolve(path));
@@ -125,20 +125,19 @@ async function run() {
         const gitApplyStdout = new streamBuffer.WritableStreamBuffer();
         const gitApplyStderr = new streamBuffer.WritableStreamBuffer();
 
-        const options = {
+        const options: exec.ExecOptions = {
           cwd: path,
           outStream: gitApplyStdout,
-          errStream: gitApplyStderr
+          errStream: gitApplyStderr,
+          ignoreReturnCode: true
         };
 
-        try {
-          await exec.exec(`git apply --reject --verbose ${patchFilePath}`, [], options);
-        }
-        catch (e) {
+        const res = await exec.exec(`git apply --reject --verbose ${patchFilePath}`, [], options);
+        if (res !== 0) {
           const rejFiles = findRejFiles(path);
           console.error("Failed to apply the patch. Found .rej files: ", rejFiles);
-          console.error("Please take a look at these files. They contain the rejected parts of the patch.")
-          throw e;
+          console.error("Please take a look at these files. They contain the rejected parts of the patch.");
+          process.exit(1);
         }
 
         const gitApplyStdoutContentsString = gitApplyStdout.getContentsAsString('utf8');
