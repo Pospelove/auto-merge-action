@@ -24213,6 +24213,7 @@ async function run() {
           errStream: gitApplyStderr,
           ignoreReturnCode: true
         };
+        console.log("[!] Applying patch file:", patchFilePath);
         const res = await exec.exec(`git apply --reject --verbose ${patchFilePath}`, [], options);
         if (res !== 0) {
           const rejFiles = findRejFiles(path);
