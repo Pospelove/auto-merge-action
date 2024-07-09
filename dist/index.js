@@ -24190,7 +24190,6 @@ async function run() {
         const prNumber = pr.number;
         const prBranch = pr.head.ref;
         const prAuthor = pr.user.login;
-        console.log(`Processing PR #${prNumber} from ${prAuthor} with branch ${prBranch}`);
         const patch = await octokit.rest.pulls.get({
           owner,
           repo,
@@ -24200,7 +24199,6 @@ async function run() {
           }
         });
         const patchContent = patch.data;
-        console.log(`Applying patch to the repository`);
         const patchFilePath = pathModule.join(os.tmpdir(), "patch.diff");
         fs.writeFileSync(patchFilePath, patchContent);
         console.log("Current directory:", path);
@@ -24213,6 +24211,7 @@ async function run() {
           errStream: gitApplyStderr,
           ignoreReturnCode: true
         };
+        console.log(`[!] Processing PR #${prNumber} from ${prAuthor} with branch ${prBranch}`);
         console.log("[!] Applying patch file:", patchFilePath);
         const res = await exec.exec(`git apply --reject --verbose ${patchFilePath}`, [], options);
         if (res !== 0) {
