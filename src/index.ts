@@ -2,10 +2,6 @@ import * as core from '@actions/core';
 
 import { Octokit } from '@octokit/rest';
 
-import * as isomorphicGit from 'isomorphic-git';
-
-import * as diff from "diff";
-
 import * as exec from '@actions/exec';
 
 import * as fs from "fs";
