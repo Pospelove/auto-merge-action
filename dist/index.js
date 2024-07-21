@@ -24232,11 +24232,26 @@ async function run() {
       if (generateBuildMetadata === "true") {
         console.log("Generating build metadata");
         ;
+        ;
         const buildMetadata = {
-          prs: []
+          prs: [],
+          refs_info: {}
         };
         for (const pr of pullRequests.data) {
           buildMetadata.prs.push(pr);
+          buildMetadata.refs_info[pr.head.ref] = {
+            lastCommitSha: pr.head.sha,
+            lastCommitName: await octokit.rest.git.getCommit({
+              owner,
+              repo,
+              commit_sha: pr.head.sha
+            }).then((commit) => commit.data.committer.name),
+            lastCommitAuthor: await octokit.rest.git.getCommit({
+              owner,
+              repo,
+              commit_sha: pr.head.sha
+            }).then((commit) => commit.data.author.name)
+          };
         }
         console.log("Build metadata:", buildMetadata);
         console.log("Writing build metadata to build-metadata.json");
