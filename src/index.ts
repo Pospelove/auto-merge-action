@@ -153,7 +153,7 @@ async function run() {
 
       const generateBuildMetadata = core.getInput('generate-build-metadata');
 
-      if (generateBuildMetadata) {
+      if (generateBuildMetadata === 'true') {
 
         console.log("Generating build metadata");
 
@@ -183,6 +183,9 @@ async function run() {
         console.log("Build metadata:", buildMetadata);
         console.log("Writing build metadata to build-metadata.json");
         fs.writeFileSync("build-metadata.json", JSON.stringify(buildMetadata, null, 2));
+      }
+      else {
+        console.log("Skipping build metadata generation, var was not set to true, but to:", generateBuildMetadata);
       }
     }
   } catch (error) {
