@@ -22,6 +22,7 @@ jobs:
       - name: Merge Pull Requests
         uses: Pospelove/auto-merge-action@main
         with:
+          generate-build-metadata: 'true'
           path: 'skyrim-multiplayer/skymp'
           repositories: |
             [
