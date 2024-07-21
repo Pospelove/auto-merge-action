@@ -43,3 +43,9 @@ jobs:
         with:
           name: merged-changes
           path: skyrim-multiplayer/skymp
+
+      - name: Upload build metadata
+        uses: actions/upload-artifact@v2
+        with:
+          name: build-metadata.json
+          path: build-metadata.json
