@@ -24232,12 +24232,11 @@ async function run() {
       if (generateBuildMetadata === "true") {
         console.log("Generating build metadata");
         ;
-        ;
         const buildMetadata = {
           prs: []
         };
         for (const pr of pullRequests.data) {
-          console.log({ pr });
+          buildMetadata.prs.push(pr);
         }
         console.log("Build metadata:", buildMetadata);
         console.log("Writing build metadata to build-metadata.json");

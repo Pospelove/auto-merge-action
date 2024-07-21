@@ -157,16 +157,7 @@ async function run() {
 
         console.log("Generating build metadata");
 
-        interface BuildMetadataPR {
-          repo: string;
-          number: number;
-          name: string;
-          author: string;
-          branch: string;
-          lastCommitId: string;
-          lastCommitMessage: string;
-          lastModificationDate: string;
-        };
+        type BuildMetadataPR = any;
 
         interface BuildMetadata {
           prs: BuildMetadataPR[];
@@ -177,7 +168,7 @@ async function run() {
         };
 
         for (const pr of pullRequests.data) {
-          console.log({ pr });
+          buildMetadata.prs.push(pr);
         }
 
         console.log("Build metadata:", buildMetadata);
