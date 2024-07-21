@@ -24241,11 +24241,11 @@ async function run() {
           buildMetadata.prs.push(pr);
           buildMetadata.refs_info[pr.head.ref] = {
             lastCommitSha: pr.head.sha,
-            lastCommitName: await octokit.rest.git.getCommit({
+            lastCommitMessage: await octokit.rest.git.getCommit({
               owner,
               repo,
               commit_sha: pr.head.sha
-            }).then((commit) => commit.data.committer.name),
+            }).then((commit) => commit.data.message),
             lastCommitAuthor: await octokit.rest.git.getCommit({
               owner,
               repo,
