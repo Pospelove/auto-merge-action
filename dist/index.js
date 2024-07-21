@@ -24239,20 +24239,27 @@ async function run() {
         };
         for (const pr of pullRequests.data) {
           buildMetadata.prs.push(pr);
-          buildMetadata.refs_info[pr.head.ref] = {
-            lastCommitSha: pr.head.sha,
-            lastCommitMessage: await octokit.rest.git.getCommit({
-              owner,
-              repo,
-              commit_sha: pr.head.sha
-            }).then((commit) => commit.data.message),
-            lastCommitAuthor: await octokit.rest.git.getCommit({
-              owner,
-              repo,
-              commit_sha: pr.head.sha
-            }).then((commit) => commit.data.author.name)
-          };
         }
+        const promises = pullRequests.data.map(async (pr) => {
+          const commit = await octokit.rest.git.getCommit({
+            owner,
+            repo,
+            commit_sha: pr.head.sha
+          });
+          return {
+            ref: pr.head.ref,
+            info: {
+              lastCommitSha: pr.head.sha,
+              lastCommitMessage: commit.data.message,
+              lastCommitAuthor: commit.data.author.name,
+              lastCommitAuthorDate: commit.data.author.date
+            }
+          };
+        });
+        const results = await Promise.all(promises);
+        results.forEach((result) => {
+          buildMetadata.refs_info[result.ref] = result.info;
+        });
         console.log("Build metadata:", buildMetadata);
         console.log("Writing build metadata to build-metadata.json");
         fs.writeFileSync("build-metadata.json", JSON.stringify(buildMetadata, null, 2));
