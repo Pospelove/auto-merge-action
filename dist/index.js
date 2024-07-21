@@ -24228,6 +24228,21 @@ async function run() {
           throw new Error("Failed to apply the patch correctly. Skipped files: " + skippedFiles.join(", "));
         }
       }
+      const generateBuildMetadata = core.getInput("generate-build-metadata");
+      if (generateBuildMetadata) {
+        console.log("Generating build metadata");
+        ;
+        ;
+        const buildMetadata = {
+          prs: []
+        };
+        for (const pr of pullRequests.data) {
+          console.log({ pr });
+        }
+        console.log("Build metadata:", buildMetadata);
+        console.log("Writing build metadata to build-metadata.json");
+        fs.writeFileSync("build-metadata.json", JSON.stringify(buildMetadata, null, 2));
+      }
     }
   } catch (error) {
     core.setFailed(`Action failed with error: ${error}`);

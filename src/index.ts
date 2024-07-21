@@ -148,6 +148,42 @@ async function run() {
           throw new Error("Failed to apply the patch correctly. Skipped files: " + skippedFiles.join(", "));
         }
       }
+
+      // Generate build metadata
+
+      const generateBuildMetadata = core.getInput('generate-build-metadata');
+
+      if (generateBuildMetadata) {
+
+        console.log("Generating build metadata");
+
+        interface BuildMetadataPR {
+          repo: string;
+          number: number;
+          name: string;
+          author: string;
+          branch: string;
+          lastCommitId: string;
+          lastCommitMessage: string;
+          lastModificationDate: string;
+        };
+
+        interface BuildMetadata {
+          prs: BuildMetadataPR[];
+        };
+
+        const buildMetadata: BuildMetadata = {
+          prs: []
+        };
+
+        for (const pr of pullRequests.data) {
+          console.log({ pr });
+        }
+
+        console.log("Build metadata:", buildMetadata);
+        console.log("Writing build metadata to build-metadata.json");
+        fs.writeFileSync("build-metadata.json", JSON.stringify(buildMetadata, null, 2));
+      }
     }
   } catch (error) {
     core.setFailed(`Action failed with error: ${error}`);
