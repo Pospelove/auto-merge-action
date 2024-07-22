@@ -24153,6 +24153,8 @@ function findRejFiles(dir) {
 }
 async function run() {
   try {
+    let buildMetadata = null;
+    const generateBuildMetadata = core.getInput("generate-build-metadata");
     const repositories = JSON.parse(core.getInput("repositories"));
     let path = core.getInput("path");
     if (!path.endsWith("/")) {
@@ -24228,15 +24230,14 @@ async function run() {
           throw new Error("Failed to apply the patch correctly. Skipped files: " + skippedFiles.join(", "));
         }
       }
-      const generateBuildMetadata = core.getInput("generate-build-metadata");
       if (generateBuildMetadata === "true") {
+        if (buildMetadata === null) {
+          buildMetadata = {
+            prs: [],
+            refs_info: []
+          };
+        }
         console.log("Generating build metadata");
-        ;
-        ;
-        const buildMetadata = {
-          prs: [],
-          refs_info: []
-        };
         for (const pr of pullRequests.data) {
           buildMetadata.prs.push(pr);
         }
@@ -24263,14 +24264,17 @@ async function run() {
         });
         const results = await Promise.all(promises);
         results.forEach((result) => {
-          buildMetadata.refs_info.push(result.info);
+          buildMetadata?.refs_info.push(result.info);
         });
-        console.log("Build metadata:", buildMetadata);
-        console.log("Writing build metadata to build-metadata.json");
-        fs.writeFileSync("build-metadata.json", JSON.stringify(buildMetadata, null, 2));
-      } else {
-        console.log("Skipping build metadata generation, var was not set to true, but to:", generateBuildMetadata);
       }
+    }
+    if (buildMetadata === null) {
+      console.log("No build metadata to write");
+    } else {
+      console.log("Build metadata:", buildMetadata);
+      const p = pathModule.normalize("build-metadata.json");
+      console.log("Writing build metadata to " + p);
+      fs.writeFileSync(p, JSON.stringify(buildMetadata, null, 2));
     }
   } catch (error) {
     core.setFailed(`Action failed with error: ${error}`);

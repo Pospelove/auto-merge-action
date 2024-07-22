@@ -37,8 +37,31 @@ function findRejFiles(dir: string) {
   return results;
 }
 
+type BuildMetadataPR = any;
+
+interface RefInfo {
+  ref: string;
+  lastCommitSha: string;
+  lastCommitMessage: string;
+  lastCommitAuthor: string;
+  lastCommitAuthorDate: string;
+  repoOwner: string;
+  repoName: string;
+  prNumber: number;
+  prTitle: string;
+};
+
+interface BuildMetadata {
+  prs: BuildMetadataPR[];
+  refs_info: Array<RefInfo>;
+};
+
 async function run() {
   try {
+    let buildMetadata: BuildMetadata | null = null;
+
+    const generateBuildMetadata = core.getInput('generate-build-metadata');
+
     const repositories: Repository[] = JSON.parse(core.getInput('repositories'));
 
     let path: string = core.getInput('path');
@@ -149,37 +172,17 @@ async function run() {
         }
       }
 
-      // Generate build metadata
-
-      const generateBuildMetadata = core.getInput('generate-build-metadata');
-
+      // Generate build metadata for the current repo in the loop
       if (generateBuildMetadata === 'true') {
 
+        if (buildMetadata === null) {
+          buildMetadata = {
+            prs: [],
+            refs_info: []
+          };
+        }
+
         console.log("Generating build metadata");
-
-        type BuildMetadataPR = any;
-
-        interface RefInfo {
-          ref: string;
-          lastCommitSha: string;
-          lastCommitMessage: string;
-          lastCommitAuthor: string;
-          lastCommitAuthorDate: string;
-          repoOwner: string;
-          repoName: string;
-          prNumber: number;
-          prTitle: string;
-        };
-
-        interface BuildMetadata {
-          prs: BuildMetadataPR[];
-          refs_info: Array<RefInfo>;
-        };
-
-        const buildMetadata: BuildMetadata = {
-          prs: [],
-          refs_info: []
-        };
 
         for (const pr of pullRequests.data) {
           buildMetadata.prs.push(pr);
@@ -210,16 +213,19 @@ async function run() {
         const results = await Promise.all(promises);
 
         results.forEach(result => {
-          buildMetadata.refs_info.push(result.info);
+          buildMetadata?.refs_info.push(result.info);
         });
+      }
+    }
 
-        console.log("Build metadata:", buildMetadata);
-        console.log("Writing build metadata to build-metadata.json");
-        fs.writeFileSync("build-metadata.json", JSON.stringify(buildMetadata, null, 2));
-      }
-      else {
-        console.log("Skipping build metadata generation, var was not set to true, but to:", generateBuildMetadata);
-      }
+    if (buildMetadata === null) {
+      console.log("No build metadata to write");
+    }
+    else {
+      console.log("Build metadata:", buildMetadata);
+      const p = pathModule.normalize("build-metadata.json");
+      console.log("Writing build metadata to " + p);
+      fs.writeFileSync(p, JSON.stringify(buildMetadata, null, 2));
     }
   } catch (error) {
     core.setFailed(`Action failed with error: ${error}`);
