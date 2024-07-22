@@ -24254,7 +24254,9 @@ async function run() {
               lastCommitAuthor: commit.data.author.name,
               lastCommitAuthorDate: commit.data.author.date,
               repoOwner: owner,
-              repoName: repo
+              repoName: repo,
+              prNumber: pr.number,
+              prTitle: pr.title
             }
           };
         });

@@ -166,6 +166,8 @@ async function run() {
           lastCommitAuthorDate: string;
           repoOwner: string;
           repoName: string;
+          prNumber: number;
+          prTitle: string;
         };
 
         interface BuildMetadata {
@@ -196,7 +198,9 @@ async function run() {
               lastCommitAuthor: commit.data.author.name,
               lastCommitAuthorDate: commit.data.author.date,
               repoOwner: owner,
-              repoName: repo
+              repoName: repo,
+              prNumber: pr.number,
+              prTitle: pr.title
             }
           };
         });
