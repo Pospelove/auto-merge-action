@@ -24235,7 +24235,7 @@ async function run() {
         ;
         const buildMetadata = {
           prs: [],
-          refs_info: {}
+          refs_info: []
         };
         for (const pr of pullRequests.data) {
           buildMetadata.prs.push(pr);
@@ -24263,7 +24263,7 @@ async function run() {
         });
         const results = await Promise.all(promises);
         results.forEach((result) => {
-          buildMetadata.refs_info[result.ref] = result.info;
+          buildMetadata.refs_info.push(result.info);
         });
         console.log("Build metadata:", buildMetadata);
         console.log("Writing build metadata to build-metadata.json");

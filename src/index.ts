@@ -173,12 +173,12 @@ async function run() {
 
         interface BuildMetadata {
           prs: BuildMetadataPR[];
-          refs_info: Record<string, RefInfo>;
+          refs_info: Array<RefInfo>;
         };
 
         const buildMetadata: BuildMetadata = {
           prs: [],
-          refs_info: {}
+          refs_info: []
         };
 
         for (const pr of pullRequests.data) {
@@ -210,7 +210,7 @@ async function run() {
         const results = await Promise.all(promises);
 
         results.forEach(result => {
-          buildMetadata.refs_info[result.ref] = result.info;
+          buildMetadata.refs_info.push(result.info);
         });
 
         console.log("Build metadata:", buildMetadata);
