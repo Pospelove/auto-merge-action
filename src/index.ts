@@ -160,6 +160,7 @@ async function run() {
         type BuildMetadataPR = any;
 
         interface RefInfo {
+          ref: string;
           lastCommitSha: string;
           lastCommitMessage: string;
           lastCommitAuthor: string;
@@ -193,6 +194,7 @@ async function run() {
           return {
             ref: pr.head.ref,
             info: {
+              ref: pr.head.ref,
               lastCommitSha: pr.head.sha,
               lastCommitMessage: commit.data.message,
               lastCommitAuthor: commit.data.author.name,
