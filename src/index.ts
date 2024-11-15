@@ -152,6 +152,9 @@ async function run() {
         console.log("[!] Applying patch file:", patchFilePath);
         const res = await exec.exec(`git apply --reject --verbose ${patchFilePath}`, [], options);
         if (res !== 0) {
+          console.log("Failed to apply the patch. Return code:", res);
+          console.log("stderr:", gitApplyStderr.getContentsAsString('utf8'));
+          console.log("stdout:", gitApplyStdout.getContentsAsString('utf8'));
           const rejFiles = findRejFiles(path);
           throw new Error("Failed to apply the patch. Found .rej files: " + rejFiles.join(", ") + ". Please take a look at these files. They contain the rejected parts of the patch.");
         }
