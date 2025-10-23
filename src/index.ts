@@ -116,11 +116,11 @@ async function run() {
           throw new Error(`Failed to fetch PR #${prNumber}. stdout: ${stdout}, stderr: ${stderr}`);
         }
 
-        // Merge the PR branch
+        // Merge the PR branch using the local branch name instead of SHA
         console.log(`[!] Merging branch ${prBranch} (${prSha})`);
         const gitMergeStdout = new streamBuffer.WritableStreamBuffer();
         const gitMergeStderr = new streamBuffer.WritableStreamBuffer();
-        res = await exec.exec(`git merge ${prSha}`, [], {
+        res = await exec.exec(`git merge ${prBranch}`, [], {
           cwd: path,
           ignoreReturnCode: true,
           outStream: gitMergeStdout,

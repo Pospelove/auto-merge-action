@@ -24195,7 +24195,7 @@ async function run() {
         console.log(`[!] Merging branch ${prBranch} (${prSha})`);
         const gitMergeStdout = new streamBuffer.WritableStreamBuffer();
         const gitMergeStderr = new streamBuffer.WritableStreamBuffer();
-        res = await exec.exec(`git merge ${prSha}`, [], {
+        res = await exec.exec(`git merge ${prBranch}`, [], {
           cwd: path,
           ignoreReturnCode: true,
           outStream: gitMergeStdout,
