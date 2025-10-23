@@ -13,7 +13,10 @@ inputs:
     description: 'Whether to generate build metadata.'
     required: false
     default: 'false'
-
+  skip-git-config:
+    description: 'Whether to skip setting git user.name and user.email. Defaults to false.'
+    required: false
+    default: 'false'
 runs:
   using: 'node20'
   main: 'dist/index.js'

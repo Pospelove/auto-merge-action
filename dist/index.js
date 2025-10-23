@@ -24148,6 +24148,11 @@ async function run() {
     if (!path.endsWith("/")) {
       path += "/";
     }
+    const skipGitConfig = core.getInput("skip-git-config") === "true";
+    if (!skipGitConfig) {
+      await exec.exec('git config --global user.name "github-actions[bot]"');
+      await exec.exec('git config --global user.email "github-actions[bot]@users.noreply.github.com"');
+    }
     for (const repository of repositories) {
       const { repo, labels, token, owner } = repository;
       console.log(`Repository: ${repo}, Labels: ${labels.join(", ")}`);
