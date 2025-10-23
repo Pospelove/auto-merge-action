@@ -36,6 +36,10 @@ interface BuildMetadata {
   refs_info: Array<RefInfo>;
 };
 
+function sortPullRequests(pullRequests: any[]): any[] {
+  return pullRequests.sort((a, b) => a.number - b.number);
+}
+
 async function run() {
   try {
     let buildMetadata: BuildMetadata | null = null;
@@ -76,7 +80,7 @@ async function run() {
         })
       ));
 
-      const pullRequestsData = pullRequests.map(pr => pr.data);
+      const pullRequestsData = sortPullRequests(pullRequests.map(pr => pr.data));
 
       console.log(`Found ${pullRequestsData.length} open PRs with required labels`);
 
