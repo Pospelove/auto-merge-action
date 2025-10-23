@@ -24153,6 +24153,11 @@ async function run() {
     for (const repository of repositories) {
       const { repo, labels, token, owner } = repository;
       console.log(`Repository: ${repo}, Labels: ${labels.join(", ")}`);
+      const remoteUrl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
+      console.log(`[!] Setting remote origin URL to: https://x-access-token:***@github.com/${owner}/${repo}.git`);
+      await exec.exec("git remote set-url origin", [remoteUrl], { cwd: path });
+      console.log("[!] Fetching from new origin");
+      await exec.exec("git fetch origin", [], { cwd: path });
       const octokit = new import_rest.Octokit({
         auth: token
       });
@@ -24204,10 +24209,9 @@ async function run() {
         if (res !== 0) {
           const stdout = gitMergeStdout.getContentsAsString("utf8") || "";
           const stderr = gitMergeStderr.getContentsAsString("utf8") || "";
-          const gitStatus = await exec.exec("git status --porcelain", [], { cwd: path });
-          if (gitStatus !== 0) {
-            throw new Error(`Merge of PR #${prNumber} failed and could not get git status. stdout: ${stdout}, stderr: ${stderr}`);
-          }
+          console.error(`[!] Merge of PR #${prNumber} failed. Resetting workspace to a clean state...`);
+          await exec.exec("git reset --hard HEAD", [], { cwd: path });
+          await exec.exec("git clean -fd", [], { cwd: path });
           throw new Error(`Merge of PR #${prNumber} resulted in conflicts. Please resolve them manually. stdout: ${stdout}, stderr: ${stderr}`);
         }
       }

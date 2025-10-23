@@ -1,13 +1,8 @@
 import * as core from '@actions/core';
-
 import { Octokit } from '@octokit/rest';
-
 import * as exec from '@actions/exec';
-
 import * as fs from "fs";
-
 import * as pathModule from "path";
-
 import * as streamBuffer from "stream-buffers";
 
 interface Repository {
@@ -45,12 +40,9 @@ async function run() {
     let buildMetadata: BuildMetadata | null = null;
 
     const generateBuildMetadata = core.getInput('generate-build-metadata');
-
     const repositories: Repository[] = JSON.parse(core.getInput('repositories'));
-
     let path: string = core.getInput('path');
 
-    // important for replace 'a' and 'b' in diff
     if (!path.endsWith('/')) {
       path += '/';
     }
@@ -62,11 +54,19 @@ async function run() {
       const { repo, labels, token, owner } = repository;
       console.log(`Repository: ${repo}, Labels: ${labels.join(', ')}`);
 
+      // [FIX] Set the remote URL for 'origin' to the current repository in the loop
+      const remoteUrl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
+      console.log(`[!] Setting remote origin URL to: https://x-access-token:***@github.com/${owner}/${repo}.git`);
+      await exec.exec('git remote set-url origin', [remoteUrl], { cwd: path });
+
+      // [FIX] Fetch from the new origin to update local remote-tracking branches
+      console.log('[!] Fetching from new origin');
+      await exec.exec('git fetch origin', [], { cwd: path });
+
       const octokit = new Octokit({
         auth: token,
       });
 
-      // get pull requests from repository
       const query = `repo:${owner}/${repo} is:pr is:open ${labels.map(label => `label:"${label}"`).join(' ')}`;
       console.log("Searching for PRs with query:", query);
       const searchResult = await octokit.search.issuesAndPullRequests({
@@ -86,8 +86,6 @@ async function run() {
       const pullRequestsData = sortPullRequests(pullRequests.map(pr => pr.data));
 
       console.log(`Found ${pullRequestsData.length} open PRs with required labels`);
-
-      // get PR as a patch
 
       for (const pr of pullRequestsData) {
         const prNumber = pr.number;
@@ -109,6 +107,7 @@ async function run() {
 
         // Fetch the PR branch
         console.log(`[!] Fetching PR #${prNumber} from remote`);
+        // [FIX] 'origin' now correctly points to the right repo (from the fix above)
         let res = await exec.exec(`git fetch origin pull/${prNumber}/head:${prBranch}`, [], options);
         if (res !== 0) {
           const stdout = fetchStdout.getContentsAsString('utf8') || '';
@@ -116,7 +115,7 @@ async function run() {
           throw new Error(`Failed to fetch PR #${prNumber}. stdout: ${stdout}, stderr: ${stderr}`);
         }
 
-        // Merge the PR branch using the local branch name instead of SHA
+        // Merge the PR branch
         console.log(`[!] Merging branch ${prBranch} (${prSha})`);
         const gitMergeStdout = new streamBuffer.WritableStreamBuffer();
         const gitMergeStderr = new streamBuffer.WritableStreamBuffer();
@@ -126,28 +125,29 @@ async function run() {
           outStream: gitMergeStdout,
           errStream: gitMergeStderr
         });
+        
         if (res !== 0) {
           const stdout = gitMergeStdout.getContentsAsString('utf8') || '';
           const stderr = gitMergeStderr.getContentsAsString('utf8') || '';
-          // Check for merge conflicts
-          const gitStatus = await exec.exec('git status --porcelain', [], { cwd: path });
-          if (gitStatus !== 0) {
-            throw new Error(`Merge of PR #${prNumber} failed and could not get git status. stdout: ${stdout}, stderr: ${stderr}`);
-          }
+
+          // [FIX] Reset the workspace to a clean state *before* throwing the error
+          console.error(`[!] Merge of PR #${prNumber} failed. Resetting workspace to a clean state...`);
+          await exec.exec('git reset --hard HEAD', [], { cwd: path });
+          await exec.exec('git clean -fd', [], { cwd: path });
+
+          // Now throw the error to fail the action
           throw new Error(`Merge of PR #${prNumber} resulted in conflicts. Please resolve them manually. stdout: ${stdout}, stderr: ${stderr}`);
         }
       }
 
-      // Generate build metadata for the current repo in the loop
+      // Generate build metadata
       if (generateBuildMetadata === 'true') {
-
         if (buildMetadata === null) {
           buildMetadata = {
             prs: [],
             refs_info: []
           };
         }
-
         console.log("Generating build metadata");
 
         for (const pr of pullRequestsData) {
@@ -177,7 +177,6 @@ async function run() {
         });
 
         const results = await Promise.all(promises);
-
         results.forEach(result => {
           buildMetadata?.refs_info.push(result.info);
         });
@@ -186,8 +185,7 @@ async function run() {
 
     if (buildMetadata === null) {
       console.log("No build metadata to write");
-    }
-    else {
+    } else {
       console.log("Build metadata:", buildMetadata);
       const p = pathModule.normalize("build-metadata.json");
       console.log("Writing build metadata to " + p);
