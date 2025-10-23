@@ -55,6 +55,9 @@ async function run() {
       path += '/';
     }
 
+    await exec.exec('git config user.name "github-actions[bot]"', [], { cwd: path });
+    await exec.exec('git config user.email "github-actions[bot]@users.noreply.github.com"', [], { cwd: path });
+
     for (const repository of repositories) {
       const { repo, labels, token, owner } = repository;
       console.log(`Repository: ${repo}, Labels: ${labels.join(', ')}`);
