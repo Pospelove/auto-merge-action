@@ -8,6 +8,8 @@ import * as fs from "fs";
 
 import * as pathModule from "path";
 
+import * as streamBuffer from "stream-buffers";
+
 interface Repository {
   owner: string,
   repo: string;
@@ -88,28 +90,44 @@ async function run() {
 
         console.log(`[!] Processing PR #${prNumber} from ${prAuthor} with branch ${prBranch}`);
 
+        const fetchStdout = new streamBuffer.WritableStreamBuffer();
+        const fetchStderr = new streamBuffer.WritableStreamBuffer();
+
         const options: exec.ExecOptions = {
           cwd: path,
-          ignoreReturnCode: true
+          ignoreReturnCode: true,
+          outStream: fetchStdout,
+          errStream: fetchStderr
         };
 
         // Fetch the PR branch
         console.log(`[!] Fetching PR #${prNumber} from remote`);
         let res = await exec.exec(`git fetch origin pull/${prNumber}/head:${prBranch}`, [], options);
         if (res !== 0) {
-          throw new Error(`Failed to fetch PR #${prNumber}`);
+          const stdout = fetchStdout.getContentsAsString('utf8') || '';
+          const stderr = fetchStderr.getContentsAsString('utf8') || '';
+          throw new Error(`Failed to fetch PR #${prNumber}. stdout: ${stdout}, stderr: ${stderr}`);
         }
 
         // Merge the PR branch
         console.log(`[!] Merging branch ${prBranch} (${prSha})`);
-        res = await exec.exec(`git merge ${prSha}`, [], options);
+        const gitMergeStdout = new streamBuffer.WritableStreamBuffer();
+        const gitMergeStderr = new streamBuffer.WritableStreamBuffer();
+        res = await exec.exec(`git merge ${prSha}`, [], {
+          cwd: path,
+          ignoreReturnCode: true,
+          outStream: gitMergeStdout,
+          errStream: gitMergeStderr
+        });
         if (res !== 0) {
+          const stdout = gitMergeStdout.getContentsAsString('utf8') || '';
+          const stderr = gitMergeStderr.getContentsAsString('utf8') || '';
           // Check for merge conflicts
           const gitStatus = await exec.exec('git status --porcelain', [], { cwd: path });
           if (gitStatus !== 0) {
-            throw new Error(`Merge of PR #${prNumber} failed and could not get git status.`);
+            throw new Error(`Merge of PR #${prNumber} failed and could not get git status. stdout: ${stdout}, stderr: ${stderr}`);
           }
-          throw new Error(`Merge of PR #${prNumber} resulted in conflicts. Please resolve them manually.`);
+          throw new Error(`Merge of PR #${prNumber} resulted in conflicts. Please resolve them manually. stdout: ${stdout}, stderr: ${stderr}`);
         }
       }
 
