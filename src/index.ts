@@ -6,35 +6,13 @@ import * as exec from '@actions/exec';
 
 import * as fs from "fs";
 
-import * as os from "os";
-
 import * as pathModule from "path";
-
-import * as streamBuffer from "stream-buffers";
 
 interface Repository {
   owner: string,
   repo: string;
   labels: string[];
   token?: string;
-}
-
-type PR = any;
-
-// Function to find .rej files recursively
-function findRejFiles(dir: string) {
-  let results = new Array<string>();
-  const list = fs.readdirSync(dir);
-  list.forEach(file => {
-    file = pathModule.resolve(dir, file);
-    const stat = fs.statSync(file);
-    if (stat && stat.isDirectory()) {
-      results = results.concat(findRejFiles(file));
-    } else if (file.endsWith('.rej')) {
-      results.push(file);
-    }
-  });
-  return results;
 }
 
 type BuildMetadataPR = any;
@@ -80,95 +58,58 @@ async function run() {
       });
 
       // get pull requests from repository
+      const query = `repo:${owner}/${repo} is:pr is:open ${labels.map(label => `label:"${label}"`).join(' ')}`;
+      console.log("Searching for PRs with query:", query);
+      const searchResult = await octokit.search.issuesAndPullRequests({
+        q: query
+      });
 
-      let pagesRemaining = true;
-      let pullRequests = { data: new Array<PR> };
-      let page = 0;
-      while (pagesRemaining) {
-        ++page;
+      console.log(`Found ${searchResult.data.items.length} PRs with required labels`);
 
-        const pullRequestsPage = await octokit.rest.pulls.list({
+      const pullRequests = await Promise.all(searchResult.data.items.map(issue =>
+        octokit.rest.pulls.get({
           owner,
           repo,
-          state: 'open',
-          per_page: 100,
-          page
-        });
+          pull_number: issue.number
+        })
+      ));
 
-        const linkHeader = pullRequestsPage.headers.link;
-        pagesRemaining = !!(linkHeader && linkHeader.includes(`rel=\"next\"`));
+      const pullRequestsData = pullRequests.map(pr => pr.data);
 
-        console.log("Received page", page, "of PRs");
-        pullRequests.data = pullRequests.data.concat(pullRequestsPage.data);
-      }
-      console.log(`Found ${pullRequests.data.length} open PRs`);
-
-      for (const label of labels) {
-        pullRequests.data = pullRequests.data.filter(pr => pr.labels.some((l: PR) => l.name === label));
-      }
-
-      console.log(`Found ${pullRequests.data.length} open PRs with required labels`);
+      console.log(`Found ${pullRequestsData.length} open PRs with required labels`);
 
       // get PR as a patch
 
-      for (const pr of pullRequests.data) {
+      for (const pr of pullRequestsData) {
         const prNumber = pr.number;
         const prBranch = pr.head.ref;
         const prAuthor = pr.user.login;
+        const prSha = pr.head.sha;
 
-        const patch = await octokit.rest.pulls.get({
-          owner,
-          repo,
-          pull_number: prNumber,
-          mediaType: {
-            format: 'diff'
-          }
-        });
-
-        // apply patch to the repository
-
-        const patchContent = patch.data as unknown as string;
-
-        // create patch file in temp directory
-        const patchFilePath = pathModule.join(os.tmpdir(), 'patch.diff');
-        fs.writeFileSync(patchFilePath, patchContent);
-
-        // const exec = require('@actions/exec');
-
-        console.log("Current directory:", path);
-        console.log("Current directory absolute: ", pathModule.resolve(path));
-
-        const gitApplyStdout = new streamBuffer.WritableStreamBuffer();
-        const gitApplyStderr = new streamBuffer.WritableStreamBuffer();
+        console.log(`[!] Processing PR #${prNumber} from ${prAuthor} with branch ${prBranch}`);
 
         const options: exec.ExecOptions = {
           cwd: path,
-          outStream: gitApplyStdout,
-          errStream: gitApplyStderr,
           ignoreReturnCode: true
         };
 
-        console.log(`[!] Processing PR #${prNumber} from ${prAuthor} with branch ${prBranch}`);
-        console.log("[!] Applying patch file:", patchFilePath);
-        const res = await exec.exec(`git apply --reject --verbose ${patchFilePath}`, [], options);
+        // Fetch the PR branch
+        console.log(`[!] Fetching PR #${prNumber} from remote`);
+        let res = await exec.exec(`git fetch origin pull/${prNumber}/head:${prBranch}`, [], options);
         if (res !== 0) {
-          const rejFiles = findRejFiles(path);
-          throw new Error("Failed to apply the patch. Found .rej files: " + rejFiles.join(", ") + ". Please take a look at these files. They contain the rejected parts of the patch.");
+          throw new Error(`Failed to fetch PR #${prNumber}`);
         }
 
-        const gitApplyStdoutContentsString = gitApplyStdout.getContentsAsString('utf8');
-
-        if (gitApplyStdoutContentsString === false) {
-          throw new Error("Failed to read stdout of git apply");
-        }
-
-        console.log(gitApplyStdoutContentsString);
-
-        // Find smth like Skipped patch 'src/logic/listeners/fatigueSystem.ts'.
-        const skippedFiles = gitApplyStdoutContentsString.match(/Skipped patch '(.+?)'/g);
-
-        if (skippedFiles) {
-          throw new Error("Failed to apply the patch correctly. Skipped files: " + skippedFiles.join(", "));
+        // Merge the PR branch
+        console.log(`[!] Merging branch ${prBranch} (${prSha})`);
+        res = await exec.exec(`git merge ${prSha}`, [], options);
+        if (res !== 0) {
+          // Check for merge conflicts
+          const gitStatus = await exec.exec('git status --porcelain', [], { cwd: path });
+          if (gitStatus !== 0) {
+            throw new Error(`Merge of PR #${prNumber} failed and could not get git status.`);
+          }
+          throw new Error(`Merge of PR #${prNumber} resulted in conflicts. Please resolve them manually.`);
         }
       }
 
@@ -184,11 +125,11 @@ async function run() {
 
         console.log("Generating build metadata");
 
-        for (const pr of pullRequests.data) {
+        for (const pr of pullRequestsData) {
           buildMetadata.prs.push(pr);
         }
 
-        const promises = pullRequests.data.map(async (pr) => {
+        const promises = pullRequestsData.map(async (pr) => {
           const commit = await octokit.rest.git.getCommit({
             owner,
             repo,
