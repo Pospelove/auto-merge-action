@@ -24139,6 +24139,49 @@ var streamBuffer = __toESM(require_streambuffer());
 function sortPullRequests(pullRequests) {
   return pullRequests.sort((a, b) => a.number - b.number);
 }
+async function handleMergeConflict(prNumber, stdout, stderr, path) {
+  console.error(`[!] Merge of PR #${prNumber} failed with conflicts:`);
+  console.error(`Stdout: ${stdout}`);
+  console.error(`Stderr: ${stderr}`);
+  const conflictedFilesStdout = new streamBuffer.WritableStreamBuffer();
+  const conflictStatusRes = await exec.exec("git status --porcelain", [], {
+    cwd: path,
+    ignoreReturnCode: true,
+    outStream: conflictedFilesStdout
+  });
+  let conflictedFilesInfo = "";
+  if (conflictStatusRes === 0) {
+    const statusOutput = conflictedFilesStdout.getContentsAsString("utf8") || "";
+    const conflictedFiles = statusOutput.split("\n").filter((line) => line.startsWith("UU ") || line.startsWith("AA ") || line.startsWith("DD ")).map((line) => line.substring(3).trim()).filter((file) => file.length > 0);
+    if (conflictedFiles.length > 0) {
+      console.error(`[!] Conflicted files: ${conflictedFiles.join(", ")}`);
+      conflictedFilesInfo = ` Conflicted files: ${conflictedFiles.join(", ")}.`;
+      for (const file of conflictedFiles) {
+        try {
+          const diffStdout = new streamBuffer.WritableStreamBuffer();
+          const diffRes = await exec.exec("git", ["diff", file], {
+            cwd: path,
+            ignoreReturnCode: true,
+            outStream: diffStdout
+          });
+          if (diffRes === 0) {
+            const diffOutput = diffStdout.getContentsAsString("utf8") || "";
+            if (diffOutput.trim()) {
+              console.error(`[!] Conflict diff for ${file}:`);
+              console.error(diffOutput);
+            }
+          }
+        } catch (error) {
+          console.error(`[!] Could not read conflict details for ${file}: ${error}`);
+        }
+      }
+    }
+  }
+  console.error(`[!] Resetting workspace to a clean state...`);
+  await exec.exec("git reset --hard HEAD", [], { cwd: path });
+  await exec.exec("git clean -fd", [], { cwd: path });
+  throw new Error(`Merge of PR #${prNumber} resulted in conflicts.${conflictedFilesInfo} stdout: ${stdout}, stderr: ${stderr}`);
+}
 async function run() {
   try {
     let buildMetadata = null;
@@ -24212,10 +24255,7 @@ async function run() {
         if (res !== 0) {
           const stdout = gitMergeStdout.getContentsAsString("utf8") || "";
           const stderr = gitMergeStderr.getContentsAsString("utf8") || "";
-          console.error(`[!] Merge of PR #${prNumber} failed. Resetting workspace to a clean state...`);
-          await exec.exec("git reset --hard HEAD", [], { cwd: path });
-          await exec.exec("git clean -fd", [], { cwd: path });
-          throw new Error(`Merge of PR #${prNumber} resulted in conflicts. Please resolve them manually. stdout: ${stdout}, stderr: ${stderr}`);
+          await handleMergeConflict(prNumber, stdout, stderr, path);
         }
       }
       if (generateBuildMetadata === "true") {
