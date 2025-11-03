@@ -24140,9 +24140,11 @@ function sortPullRequests(pullRequests) {
   return pullRequests.sort((a, b) => a.number - b.number);
 }
 async function handleMergeConflict(prNumber, stdout, stderr, path) {
-  console.error(`[!] Merge of PR #${prNumber} failed with conflicts:`);
-  console.error(`Stdout: ${stdout}`);
-  console.error(`Stderr: ${stderr}`);
+  console.error(`
+${"=".repeat(80)}`);
+  console.error(`MERGE CONFLICT DETECTED - PR #${prNumber}`);
+  console.error(`${"=".repeat(80)}
+`);
   const conflictedFilesStdout = new streamBuffer.WritableStreamBuffer();
   const conflictStatusRes = await exec.exec("git status --porcelain", [], {
     cwd: path,
@@ -24150,37 +24152,64 @@ async function handleMergeConflict(prNumber, stdout, stderr, path) {
     outStream: conflictedFilesStdout
   });
   let conflictedFilesInfo = "";
+  const conflictedFiles = [];
   if (conflictStatusRes === 0) {
     const statusOutput = conflictedFilesStdout.getContentsAsString("utf8") || "";
-    const conflictedFiles = statusOutput.split("\n").filter((line) => line.startsWith("UU ") || line.startsWith("AA ") || line.startsWith("DD ")).map((line) => line.substring(3).trim()).filter((file) => file.length > 0);
+    conflictedFiles.push(...statusOutput.split("\n").filter((line) => line.startsWith("UU ") || line.startsWith("AA ") || line.startsWith("DD ")).map((line) => line.substring(3).trim()).filter((file) => file.length > 0));
     if (conflictedFiles.length > 0) {
-      console.error(`[!] Conflicted files: ${conflictedFiles.join(", ")}`);
+      console.error(`\u{1F4CB} Conflicted Files (${conflictedFiles.length}):`);
+      conflictedFiles.forEach((file) => console.error(`   - ${file}`));
+      console.error("");
       conflictedFilesInfo = ` Conflicted files: ${conflictedFiles.join(", ")}.`;
-      for (const file of conflictedFiles) {
-        try {
-          const diffStdout = new streamBuffer.WritableStreamBuffer();
-          const diffRes = await exec.exec("git", ["diff", file], {
-            cwd: path,
-            ignoreReturnCode: true,
-            outStream: diffStdout
-          });
-          if (diffRes === 0) {
-            const diffOutput = diffStdout.getContentsAsString("utf8") || "";
-            if (diffOutput.trim()) {
-              console.error(`[!] Conflict diff for ${file}:`);
-              console.error(diffOutput);
-            }
+    }
+  }
+  if (conflictedFiles.length > 0) {
+    console.error(`\u{1F4DD} Conflict Details:
+`);
+    for (const file of conflictedFiles) {
+      try {
+        const diffStdout = new streamBuffer.WritableStreamBuffer();
+        const diffRes = await exec.exec("git", ["diff", file], {
+          cwd: path,
+          ignoreReturnCode: true,
+          outStream: diffStdout
+        });
+        if (diffRes === 0) {
+          const diffOutput = diffStdout.getContentsAsString("utf8") || "";
+          if (diffOutput.trim()) {
+            console.error(`${"-".repeat(80)}`);
+            console.error(`File: ${file}`);
+            console.error(`${"-".repeat(80)}`);
+            console.error(diffOutput);
+            console.error("");
           }
-        } catch (error) {
-          console.error(`[!] Could not read conflict details for ${file}: ${error}`);
         }
+      } catch (error) {
+        console.error(`\u26A0\uFE0F  Could not read conflict details for ${file}: ${error}
+`);
       }
     }
   }
-  console.error(`[!] Resetting workspace to a clean state...`);
+  console.error(`\u{1F4E4} Git Merge Output:`);
+  console.error(`${"-".repeat(80)}`);
+  console.error(stdout);
+  if (stderr.trim()) {
+    console.error(`
+\u26A0\uFE0F  Stderr:`);
+    console.error(stderr);
+  }
+  console.error(`${"-".repeat(80)}
+`);
+  console.error(`\u{1F504} Resetting workspace to a clean state...`);
   await exec.exec("git reset --hard HEAD", [], { cwd: path });
   await exec.exec("git clean -fd", [], { cwd: path });
-  throw new Error(`Merge of PR #${prNumber} resulted in conflicts.${conflictedFilesInfo} stdout: ${stdout}, stderr: ${stderr}`);
+  console.error(`
+${"=".repeat(80)}`);
+  console.error(`END OF CONFLICT REPORT`);
+  console.error(`${"=".repeat(80)}
+`);
+  const errorMessage = `Merge of PR #${prNumber} resulted in conflicts.${conflictedFilesInfo}`;
+  throw new Error(errorMessage);
 }
 async function run() {
   try {
