@@ -279,6 +279,7 @@ async function run() {
       fs.writeFileSync(p, JSON.stringify(buildMetadata, null, 2));
     }
   } catch (error) {
+    console.error(error);
     core.setFailed(`Action failed with error: ${error}`);
   }
 }
