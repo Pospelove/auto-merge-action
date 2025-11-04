@@ -70,7 +70,7 @@ async function handleMergeConflict(prNumber: number, stdout: string, stderr: str
 
   // Show conflict details for each conflicted file
   if (conflictedFiles.length > 0) {
-    console.error(`📝 Conflict Details:\n`);
+    console.error(`[!] Conflict Details:\n`);
     for (const file of conflictedFiles) {
       try {
         const diffStdout = new streamBuffer.WritableStreamBuffer();
@@ -91,7 +91,7 @@ async function handleMergeConflict(prNumber: number, stdout: string, stderr: str
           }
         }
       } catch (error) {
-        console.error(`⚠️  Could not read conflict details for ${file}: ${error}\n`);
+        console.error(`[!] Could not read conflict details for ${file}: ${error}\n`);
       }
     }
   }
@@ -156,11 +156,16 @@ async function run() {
         auth: token,
       });
 
-      const query = `repo:${owner}/${repo} is:pr is:open ${labels.map(label => `label:"${label}"`).join(' ')}`;
-      console.log("Searching for PRs with query:", query);
-      const searchResult = await octokit.search.issuesAndPullRequests({
-        q: query
-      });
+      let searchResult;
+      if (labels.length > 0) {
+        const query = `repo:${owner}/${repo} is:pr is:open ${labels.map(label => `label:"${label}"`).join(' ')}`;
+        console.log("Searching for PRs with query:", query);
+        searchResult = await octokit.search.issuesAndPullRequests({
+          q: query,
+        });
+      } else {
+        console.log('No labels supplied, not fetching any PRs');
+      }
 
       console.log(`Found ${searchResult.data.items.length} PRs with required labels`);
 

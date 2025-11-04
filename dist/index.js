@@ -24164,7 +24164,7 @@ ${"=".repeat(80)}`);
     }
   }
   if (conflictedFiles.length > 0) {
-    console.error(`\u{1F4DD} Conflict Details:
+    console.error(`[!] Conflict Details:
 `);
     for (const file of conflictedFiles) {
       try {
@@ -24185,7 +24185,7 @@ ${"=".repeat(80)}`);
           }
         }
       } catch (error) {
-        console.error(`\u26A0\uFE0F  Could not read conflict details for ${file}: ${error}
+        console.error(`[!] Could not read conflict details for ${file}: ${error}
 `);
       }
     }
@@ -24236,11 +24236,16 @@ async function run() {
       const octokit = new import_rest.Octokit({
         auth: token
       });
-      const query = `repo:${owner}/${repo} is:pr is:open ${labels.map((label) => `label:"${label}"`).join(" ")}`;
-      console.log("Searching for PRs with query:", query);
-      const searchResult = await octokit.search.issuesAndPullRequests({
-        q: query
-      });
+      let searchResult;
+      if (labels.length > 0) {
+        const query = `repo:${owner}/${repo} is:pr is:open ${labels.map((label) => `label:"${label}"`).join(" ")}`;
+        console.log("Searching for PRs with query:", query);
+        searchResult = await octokit.search.issuesAndPullRequests({
+          q: query
+        });
+      } else {
+        console.log("No labels supplied, not fetching any PRs");
+      }
       console.log(`Found ${searchResult.data.items.length} PRs with required labels`);
       const pullRequests = await Promise.all(searchResult.data.items.map(
         (issue) => octokit.rest.pulls.get({
