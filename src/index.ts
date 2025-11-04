@@ -162,6 +162,7 @@ async function run() {
       // [FIX] Fetch from the new origin to update local remote-tracking branches
       console.log('[!] Fetching from new origin');
       await exec.exec('git fetch origin', [], { cwd: path });
+      await exec.exec('git checkout origin/HEAD', [], { cwd: path });
 
       const abbrevRef = await execStdout('git rev-parse --abbrev-ref HEAD');
       const baseCommitSha = await execStdout('git rev-parse HEAD');

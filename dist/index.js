@@ -24243,6 +24243,7 @@ async function run() {
       await exec.exec("git remote set-url origin", [remoteUrl], { cwd: path });
       console.log("[!] Fetching from new origin");
       await exec.exec("git fetch origin", [], { cwd: path });
+      await exec.exec("git checkout origin/HEAD", [], { cwd: path });
       const abbrevRef = await execStdout("git rev-parse --abbrev-ref HEAD");
       const baseCommitSha = await execStdout("git rev-parse HEAD");
       console.log({ abbrevRef, baseCommitSha });
