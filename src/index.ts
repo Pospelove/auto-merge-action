@@ -120,6 +120,12 @@ async function handleMergeConflict(prNumber: number, stdout: string, stderr: str
   throw new Error(errorMessage);
 }
 
+async function execStdout(cmd) {
+    const fetchStdout = new streamBuffer.WritableStreamBuffer();
+    await exec.exec(cmd, [], { outStream: fetchStdout });
+    return fetchStdout.getContentsAsString('utf8') || '';
+}
+
 async function run() {
   try {
     let buildMetadata: BuildMetadata | null = null;
@@ -151,6 +157,10 @@ async function run() {
       // [FIX] Fetch from the new origin to update local remote-tracking branches
       console.log('[!] Fetching from new origin');
       await exec.exec('git fetch origin', [], { cwd: path });
+
+      const abbrevRef = await execStdout('git rev-parse --abbrev-ref HEAD');
+      const baseCommitSha = await execStdout('git rev-parse HEAD');
+      console.log({ abbrevRef, baseCommitSha });
 
       const octokit = new Octokit({
         auth: token,
@@ -232,8 +242,10 @@ async function run() {
       if (generateBuildMetadata === 'true') {
         if (buildMetadata === null) {
           buildMetadata = {
+            abbrevRef,
+            baseCommitSha,
+            refs_info: [],
             prs: [],
-            refs_info: []
           };
         }
         console.log("Generating build metadata");

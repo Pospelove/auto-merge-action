@@ -24211,6 +24211,11 @@ ${"=".repeat(80)}`);
   const errorMessage = `Merge of PR #${prNumber} resulted in conflicts.${conflictedFilesInfo}`;
   throw new Error(errorMessage);
 }
+async function execStdout(cmd) {
+  const fetchStdout = new streamBuffer.WritableStreamBuffer();
+  await exec.exec(cmd, [], { outStream: fetchStdout });
+  return fetchStdout.getContentsAsString("utf8") || "";
+}
 async function run() {
   try {
     let buildMetadata = null;
@@ -24233,6 +24238,9 @@ async function run() {
       await exec.exec("git remote set-url origin", [remoteUrl], { cwd: path });
       console.log("[!] Fetching from new origin");
       await exec.exec("git fetch origin", [], { cwd: path });
+      const abbrevRef = await execStdout("git rev-parse --abbrev-ref HEAD");
+      const baseCommitSha = await execStdout("git rev-parse HEAD");
+      console.log({ abbrevRef, baseCommitSha });
       const octokit = new import_rest.Octokit({
         auth: token
       });
@@ -24296,8 +24304,10 @@ async function run() {
       if (generateBuildMetadata === "true") {
         if (buildMetadata === null) {
           buildMetadata = {
-            prs: [],
-            refs_info: []
+            abbrevRef,
+            baseCommitSha,
+            refs_info: [],
+            prs: []
           };
         }
         console.log("Generating build metadata");
