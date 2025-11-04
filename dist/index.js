@@ -24213,9 +24213,9 @@ ${"=".repeat(80)}`);
   const errorMessage = `Merge of PR #${prNumber} resulted in conflicts.${conflictedFilesInfo}`;
   throw new Error(errorMessage);
 }
-async function execStdout(cmd) {
+async function execStdout(cmd, { cwd }) {
   console.log(`[command]${cmd}`);
-  const result = await nodeExec(cmd);
+  const result = await nodeExec(cmd, { cwd });
   if (result.stderr) {
     console.error(result.stderr);
   }
@@ -24244,8 +24244,8 @@ async function run() {
       console.log("[!] Fetching from new origin");
       await exec.exec("git fetch origin", [], { cwd: path });
       await exec.exec("git checkout origin/HEAD", [], { cwd: path });
-      const abbrevRef = await execStdout("git rev-parse --abbrev-ref HEAD");
-      const baseCommitSha = await execStdout("git rev-parse HEAD");
+      const abbrevRef = await execStdout("git rev-parse --abbrev-ref HEAD", { cwd: path });
+      const baseCommitSha = await execStdout("git rev-parse HEAD", { cwd: path });
       console.log({ abbrevRef, baseCommitSha });
       const octokit = new import_rest.Octokit({
         auth: token
