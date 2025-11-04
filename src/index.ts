@@ -61,7 +61,7 @@ async function handleMergeConflict(prNumber: number, stdout: string, stderr: str
       .filter((file: string) => file.length > 0));
 
     if (conflictedFiles.length > 0) {
-      console.error(`📋 Conflicted Files (${conflictedFiles.length}):`);
+      console.error(`[!] Conflicted Files (${conflictedFiles.length}):`);
       conflictedFiles.forEach(file => console.error(`   - ${file}`));
       console.error('');
       conflictedFilesInfo = ` Conflicted files: ${conflictedFiles.join(', ')}.`;
@@ -97,17 +97,17 @@ async function handleMergeConflict(prNumber: number, stdout: string, stderr: str
   }
 
   // Show git merge output
-  console.error(`📤 Git Merge Output:`);
+  console.error(`[!] Git Merge Output:`);
   console.error(`${'-'.repeat(80)}`);
   console.error(stdout);
   if (stderr.trim()) {
-    console.error(`\n⚠️  Stderr:`);
+    console.error(`\n[!]  Stderr:`);
     console.error(stderr);
   }
   console.error(`${'-'.repeat(80)}\n`);
 
   // Reset the workspace to a clean state before throwing the error
-  console.error(`🔄 Resetting workspace to a clean state...`);
+  console.error(`[!] Resetting workspace to a clean state...`);
   await exec.exec('git reset --hard HEAD', [], { cwd: path });
   await exec.exec('git clean -fd', [], { cwd: path });
 
@@ -269,7 +269,7 @@ async function run() {
       console.log("No build metadata to write");
     } else {
       console.log("Build metadata:", buildMetadata);
-      const p = pathModule.normalize("build-metadata.json");
+      const p = pathModule.normalize(`${path}/build-metadata.json`);
       console.log("Writing build metadata to " + p);
       fs.writeFileSync(p, JSON.stringify(buildMetadata, null, 2));
     }

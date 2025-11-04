@@ -24157,7 +24157,7 @@ ${"=".repeat(80)}`);
     const statusOutput = conflictedFilesStdout.getContentsAsString("utf8") || "";
     conflictedFiles.push(...statusOutput.split("\n").filter((line) => line.startsWith("UU ") || line.startsWith("AA ") || line.startsWith("DD ")).map((line) => line.substring(3).trim()).filter((file) => file.length > 0));
     if (conflictedFiles.length > 0) {
-      console.error(`\u{1F4CB} Conflicted Files (${conflictedFiles.length}):`);
+      console.error(`[!] Conflicted Files (${conflictedFiles.length}):`);
       conflictedFiles.forEach((file) => console.error(`   - ${file}`));
       console.error("");
       conflictedFilesInfo = ` Conflicted files: ${conflictedFiles.join(", ")}.`;
@@ -24190,17 +24190,17 @@ ${"=".repeat(80)}`);
       }
     }
   }
-  console.error(`\u{1F4E4} Git Merge Output:`);
+  console.error(`[!] Git Merge Output:`);
   console.error(`${"-".repeat(80)}`);
   console.error(stdout);
   if (stderr.trim()) {
     console.error(`
-\u26A0\uFE0F  Stderr:`);
+[!]  Stderr:`);
     console.error(stderr);
   }
   console.error(`${"-".repeat(80)}
 `);
-  console.error(`\u{1F504} Resetting workspace to a clean state...`);
+  console.error(`[!] Resetting workspace to a clean state...`);
   await exec.exec("git reset --hard HEAD", [], { cwd: path });
   await exec.exec("git clean -fd", [], { cwd: path });
   console.error(`
@@ -24329,7 +24329,7 @@ async function run() {
       console.log("No build metadata to write");
     } else {
       console.log("Build metadata:", buildMetadata);
-      const p = pathModule.normalize("build-metadata.json");
+      const p = pathModule.normalize(`${path}/build-metadata.json`);
       console.log("Writing build metadata to " + p);
       fs.writeFileSync(p, JSON.stringify(buildMetadata, null, 2));
     }
