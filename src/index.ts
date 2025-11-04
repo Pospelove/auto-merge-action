@@ -4,6 +4,8 @@ import * as exec from '@actions/exec';
 import * as fs from "fs";
 import * as pathModule from "path";
 import * as streamBuffer from "stream-buffers";
+const { promisify } = require('util');
+const nodeExec = promisify(require('child_process').exec);
 
 interface Repository {
   owner: string,
@@ -121,9 +123,12 @@ async function handleMergeConflict(prNumber: number, stdout: string, stderr: str
 }
 
 async function execStdout(cmd) {
-    const fetchStdout = new streamBuffer.WritableStreamBuffer();
-    await exec.exec(cmd, [], { outStream: fetchStdout });
-    return fetchStdout.getContentsAsString('utf8') || '';
+    console.log(`[command]${cmd}`);
+    const result = await exec.exec(cmd);
+    if (result.stderr) {
+      console.error(result.stderr);
+    }
+    return result.stdout.trim();
 }
 
 async function run() {

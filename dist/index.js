@@ -11071,7 +11071,7 @@ var require_mock_interceptor = __commonJS({
 var require_mock_client = __commonJS({
   "node_modules/undici/lib/mock/mock-client.js"(exports2, module2) {
     "use strict";
-    var { promisify } = require("util");
+    var { promisify: promisify2 } = require("util");
     var Client = require_client();
     var { buildMockDispatch } = require_mock_utils();
     var {
@@ -11111,7 +11111,7 @@ var require_mock_client = __commonJS({
         return new MockInterceptor(opts, this[kDispatches]);
       }
       async [kClose]() {
-        await promisify(this[kOriginalClose])();
+        await promisify2(this[kOriginalClose])();
         this[kConnected] = 0;
         this[kMockAgent][Symbols.kClients].delete(this[kOrigin]);
       }
@@ -11124,7 +11124,7 @@ var require_mock_client = __commonJS({
 var require_mock_pool = __commonJS({
   "node_modules/undici/lib/mock/mock-pool.js"(exports2, module2) {
     "use strict";
-    var { promisify } = require("util");
+    var { promisify: promisify2 } = require("util");
     var Pool = require_pool();
     var { buildMockDispatch } = require_mock_utils();
     var {
@@ -11164,7 +11164,7 @@ var require_mock_pool = __commonJS({
         return new MockInterceptor(opts, this[kDispatches]);
       }
       async [kClose]() {
-        await promisify(this[kOriginalClose])();
+        await promisify2(this[kOriginalClose])();
         this[kConnected] = 0;
         this[kMockAgent][Symbols.kClients].delete(this[kOrigin]);
       }
@@ -24136,6 +24136,8 @@ var exec = __toESM(require_exec());
 var fs = __toESM(require("fs"));
 var pathModule = __toESM(require("path"));
 var streamBuffer = __toESM(require_streambuffer());
+var { promisify } = require("util");
+var nodeExec = promisify(require("child_process").exec);
 function sortPullRequests(pullRequests) {
   return pullRequests.sort((a, b) => a.number - b.number);
 }
@@ -24212,9 +24214,12 @@ ${"=".repeat(80)}`);
   throw new Error(errorMessage);
 }
 async function execStdout(cmd) {
-  const fetchStdout = new streamBuffer.WritableStreamBuffer();
-  await exec.exec(cmd, [], { outStream: fetchStdout });
-  return fetchStdout.getContentsAsString("utf8") || "";
+  console.log(`[command]${cmd}`);
+  const result = await exec.exec(cmd);
+  if (result.stderr) {
+    console.error(result.stderr);
+  }
+  return result.stdout.trim();
 }
 async function run() {
   try {
