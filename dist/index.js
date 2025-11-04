@@ -24215,7 +24215,7 @@ ${"=".repeat(80)}`);
 }
 async function execStdout(cmd) {
   console.log(`[command]${cmd}`);
-  const result = await exec.exec(cmd);
+  const result = await nodeExec(cmd);
   if (result.stderr) {
     console.error(result.stderr);
   }
