@@ -156,20 +156,21 @@ async function run() {
         auth: token,
       });
 
-      let searchResult;
+      let foundItems = [];
       if (labels.length > 0) {
         const query = `repo:${owner}/${repo} is:pr is:open ${labels.map(label => `label:"${label}"`).join(' ')}`;
         console.log("Searching for PRs with query:", query);
-        searchResult = await octokit.search.issuesAndPullRequests({
+        const searchResult = await octokit.search.issuesAndPullRequests({
           q: query,
         });
+        foundItems = searchResult.data.items;
       } else {
         console.log('No labels supplied, not fetching any PRs');
       }
 
-      console.log(`Found ${searchResult.data.items.length} PRs with required labels`);
+      console.log(`Found ${foundItems.length} PRs with required labels`);
 
-      const pullRequests = await Promise.all(searchResult.data.items.map(issue =>
+      const pullRequests = await Promise.all(foundItems.map(issue =>
         octokit.rest.pulls.get({
           owner,
           repo,
