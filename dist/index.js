@@ -11071,7 +11071,7 @@ var require_mock_interceptor = __commonJS({
 var require_mock_client = __commonJS({
   "node_modules/undici/lib/mock/mock-client.js"(exports2, module2) {
     "use strict";
-    var { promisify } = require("util");
+    var { promisify: promisify2 } = require("util");
     var Client = require_client();
     var { buildMockDispatch } = require_mock_utils();
     var {
@@ -11111,7 +11111,7 @@ var require_mock_client = __commonJS({
         return new MockInterceptor(opts, this[kDispatches]);
       }
       async [kClose]() {
-        await promisify(this[kOriginalClose])();
+        await promisify2(this[kOriginalClose])();
         this[kConnected] = 0;
         this[kMockAgent][Symbols.kClients].delete(this[kOrigin]);
       }
@@ -11124,7 +11124,7 @@ var require_mock_client = __commonJS({
 var require_mock_pool = __commonJS({
   "node_modules/undici/lib/mock/mock-pool.js"(exports2, module2) {
     "use strict";
-    var { promisify } = require("util");
+    var { promisify: promisify2 } = require("util");
     var Pool = require_pool();
     var { buildMockDispatch } = require_mock_utils();
     var {
@@ -11164,7 +11164,7 @@ var require_mock_pool = __commonJS({
         return new MockInterceptor(opts, this[kDispatches]);
       }
       async [kClose]() {
-        await promisify(this[kOriginalClose])();
+        await promisify2(this[kOriginalClose])();
         this[kConnected] = 0;
         this[kMockAgent][Symbols.kClients].delete(this[kOrigin]);
       }
@@ -24136,6 +24136,8 @@ var exec = __toESM(require_exec());
 var fs = __toESM(require("fs"));
 var pathModule = __toESM(require("path"));
 var streamBuffer = __toESM(require_streambuffer());
+var { promisify } = require("util");
+var nodeExec = promisify(require("child_process").exec);
 function sortPullRequests(pullRequests) {
   return pullRequests.sort((a, b) => a.number - b.number);
 }
@@ -24157,14 +24159,14 @@ ${"=".repeat(80)}`);
     const statusOutput = conflictedFilesStdout.getContentsAsString("utf8") || "";
     conflictedFiles.push(...statusOutput.split("\n").filter((line) => line.startsWith("UU ") || line.startsWith("AA ") || line.startsWith("DD ")).map((line) => line.substring(3).trim()).filter((file) => file.length > 0));
     if (conflictedFiles.length > 0) {
-      console.error(`\u{1F4CB} Conflicted Files (${conflictedFiles.length}):`);
+      console.error(`[!] Conflicted Files (${conflictedFiles.length}):`);
       conflictedFiles.forEach((file) => console.error(`   - ${file}`));
       console.error("");
       conflictedFilesInfo = ` Conflicted files: ${conflictedFiles.join(", ")}.`;
     }
   }
   if (conflictedFiles.length > 0) {
-    console.error(`\u{1F4DD} Conflict Details:
+    console.error(`[!] Conflict Details:
 `);
     for (const file of conflictedFiles) {
       try {
@@ -24185,22 +24187,22 @@ ${"=".repeat(80)}`);
           }
         }
       } catch (error) {
-        console.error(`\u26A0\uFE0F  Could not read conflict details for ${file}: ${error}
+        console.error(`[!] Could not read conflict details for ${file}: ${error}
 `);
       }
     }
   }
-  console.error(`\u{1F4E4} Git Merge Output:`);
+  console.error(`[!] Git Merge Output:`);
   console.error(`${"-".repeat(80)}`);
   console.error(stdout);
   if (stderr.trim()) {
     console.error(`
-\u26A0\uFE0F  Stderr:`);
+[!]  Stderr:`);
     console.error(stderr);
   }
   console.error(`${"-".repeat(80)}
 `);
-  console.error(`\u{1F504} Resetting workspace to a clean state...`);
+  console.error(`[!] Resetting workspace to a clean state...`);
   await exec.exec("git reset --hard HEAD", [], { cwd: path });
   await exec.exec("git clean -fd", [], { cwd: path });
   console.error(`
@@ -24210,6 +24212,14 @@ ${"=".repeat(80)}`);
 `);
   const errorMessage = `Merge of PR #${prNumber} resulted in conflicts.${conflictedFilesInfo}`;
   throw new Error(errorMessage);
+}
+async function execStdout(cmd, { cwd }) {
+  console.log(`[command]${cmd}`);
+  const result = await nodeExec(cmd, { cwd });
+  if (result.stderr) {
+    console.error(result.stderr);
+  }
+  return result.stdout.trim();
 }
 async function run() {
   try {
@@ -24222,8 +24232,8 @@ async function run() {
     }
     const skipGitConfig = core.getInput("skip-git-config") === "true";
     if (!skipGitConfig) {
-      await exec.exec('git config --global user.name "github-actions[bot]"');
-      await exec.exec('git config --global user.email "github-actions[bot]@users.noreply.github.com"');
+      await exec.exec('git config user.name "github-actions[bot]"');
+      await exec.exec('git config user.email "github-actions[bot]@users.noreply.github.com"');
     }
     for (const repository of repositories) {
       const { repo, labels, token, owner } = repository;
@@ -24233,16 +24243,25 @@ async function run() {
       await exec.exec("git remote set-url origin", [remoteUrl], { cwd: path });
       console.log("[!] Fetching from new origin");
       await exec.exec("git fetch origin", [], { cwd: path });
+      const abbrevRef = await execStdout("git rev-parse --abbrev-ref HEAD", { cwd: path });
+      const baseCommitSha = await execStdout("git rev-parse HEAD", { cwd: path });
+      console.log({ abbrevRef, baseCommitSha });
       const octokit = new import_rest.Octokit({
         auth: token
       });
-      const query = `repo:${owner}/${repo} is:pr is:open ${labels.map((label) => `label:"${label}"`).join(" ")}`;
-      console.log("Searching for PRs with query:", query);
-      const searchResult = await octokit.search.issuesAndPullRequests({
-        q: query
-      });
-      console.log(`Found ${searchResult.data.items.length} PRs with required labels`);
-      const pullRequests = await Promise.all(searchResult.data.items.map(
+      let foundItems = [];
+      if (labels.length > 0) {
+        const query = `repo:${owner}/${repo} is:pr is:open ${labels.map((label) => `label:"${label}"`).join(" ")}`;
+        console.log("Searching for PRs with query:", query);
+        const searchResult = await octokit.search.issuesAndPullRequests({
+          q: query
+        });
+        foundItems = searchResult.data.items;
+      } else {
+        console.log("No labels supplied, not fetching any PRs");
+      }
+      console.log(`Found ${foundItems.length} PRs with required labels`);
+      const pullRequests = await Promise.all(foundItems.map(
         (issue) => octokit.rest.pulls.get({
           owner,
           repo,
@@ -24290,8 +24309,10 @@ async function run() {
       if (generateBuildMetadata === "true") {
         if (buildMetadata === null) {
           buildMetadata = {
-            prs: [],
-            refs_info: []
+            abbrevRef,
+            baseCommitSha,
+            refs_info: [],
+            prs: []
           };
         }
         console.log("Generating build metadata");
@@ -24329,11 +24350,12 @@ async function run() {
       console.log("No build metadata to write");
     } else {
       console.log("Build metadata:", buildMetadata);
-      const p = pathModule.normalize("build-metadata.json");
+      const p = pathModule.normalize(`${path}/build-metadata.json`);
       console.log("Writing build metadata to " + p);
       fs.writeFileSync(p, JSON.stringify(buildMetadata, null, 2));
     }
   } catch (error) {
+    console.error(error);
     core.setFailed(`Action failed with error: ${error}`);
   }
 }
