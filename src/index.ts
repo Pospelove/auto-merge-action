@@ -146,8 +146,8 @@ async function run() {
     const skipGitConfig = core.getInput('skip-git-config') === 'true';
 
     if (!skipGitConfig) {
-      await exec.exec('git config --global user.name "github-actions[bot]"');
-      await exec.exec('git config --global user.email "github-actions[bot]@users.noreply.github.com"');
+      await exec.exec('git config user.name "github-actions[bot]"');
+      await exec.exec('git config user.email "github-actions[bot]@users.noreply.github.com"');
     }
 
     for (const repository of repositories) {
