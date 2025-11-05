@@ -24232,8 +24232,8 @@ async function run() {
     }
     const skipGitConfig = core.getInput("skip-git-config") === "true";
     if (!skipGitConfig) {
-      await exec.exec('git config user.name "github-actions[bot]"');
-      await exec.exec('git config user.email "github-actions[bot]@users.noreply.github.com"');
+      await exec.exec('git config user.name "github-actions[bot]"', [], { cwd: path });
+      await exec.exec('git config user.email "github-actions[bot]@users.noreply.github.com"', [], { cwd: path });
     }
     for (const repository of repositories) {
       const { repo, labels, token, owner } = repository;
