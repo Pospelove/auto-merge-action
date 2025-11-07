@@ -235,7 +235,7 @@ async function run() {
           outStream: gitMergeStdout,
           errStream: gitMergeStderr
         });
-        
+
         if (res !== 0) {
           const stdout = gitMergeStdout.getContentsAsString('utf8') || '';
           const stderr = gitMergeStderr.getContentsAsString('utf8') || '';
@@ -247,6 +247,7 @@ async function run() {
       if (generateBuildMetadata === 'true') {
         if (buildMetadata === null) {
           buildMetadata = {
+            runUrl: process.env.GITHUB_RUN_ID ? `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` : null,
             abbrevRef,
             baseCommitSha,
             refs_info: [],
