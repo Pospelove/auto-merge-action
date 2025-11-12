@@ -16,7 +16,21 @@ interface Repository {
   token?: string;
 }
 
-type BuildMetadataPR = any;
+type PullRequest = {
+  number: number;
+  title: string;
+  user: {
+    login: string;
+  };
+  head: {
+    ref: string;
+    sha: string;
+  };
+  labels: Array<{
+    name: string;
+  }>;
+  [key: string]: unknown;
+};
 
 interface RefInfo {
   ref: string;
@@ -28,17 +42,17 @@ interface RefInfo {
   repoName: string;
   prNumber: number;
   prTitle: string;
-};
+}
 
 interface BuildMetadata {
   runUrl?: string | null;
   abbrevRef?: string;
   baseCommitSha?: string;
-  prs: BuildMetadataPR[];
+  prs: PullRequest[];
   refs_info: Array<RefInfo>;
 }
 
-function sortPullRequests(pullRequests: any[]): any[] {
+function sortPullRequests(pullRequests: PullRequest[]): PullRequest[] {
   return pullRequests.sort((a, b) => a.number - b.number);
 }
 
@@ -176,7 +190,7 @@ async function run() {
         auth: token,
       });
 
-      let foundItems: any[] = [];
+      let foundItems: Array<{ number: number }> = [];
       if (labels.length > 0) {
         const query = `repo:${owner}/${repo} is:pr is:open ${labels.map(label => `label:"${label}"`).join(' ')}`;
         console.log("Searching for PRs with query:", query);
@@ -198,7 +212,7 @@ async function run() {
         })
       ));
 
-      const pullRequestsData = sortPullRequests(pullRequests.map(pr => pr.data));
+      const pullRequestsData = sortPullRequests(pullRequests.map(pr => pr.data as PullRequest));
 
       console.log(`Found ${pullRequestsData.length} open PRs with required labels`);
 
