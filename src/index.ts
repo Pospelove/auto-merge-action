@@ -29,7 +29,6 @@ type PullRequest = {
   labels: Array<{
     name: string;
   }>;
-  [key: string]: unknown;
 };
 
 interface RefInfo {
@@ -212,7 +211,7 @@ async function run() {
         })
       ));
 
-      const pullRequestsData = sortPullRequests(pullRequests.map(pr => pr.data as PullRequest));
+      const pullRequestsData = sortPullRequests(pullRequests.map(pr => pr.data));
 
       console.log(`Found ${pullRequestsData.length} open PRs with required labels`);
 
