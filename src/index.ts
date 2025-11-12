@@ -4,8 +4,10 @@ import * as exec from '@actions/exec';
 import * as fs from "fs";
 import * as pathModule from "path";
 import * as streamBuffer from "stream-buffers";
-const { promisify } = require('util');
-const nodeExec = promisify(require('child_process').exec);
+import { promisify } from 'util';
+import { exec as cpExec } from 'child_process';
+
+const nodeExec = promisify(cpExec);
 
 interface Repository {
   owner: string,
@@ -29,9 +31,12 @@ interface RefInfo {
 };
 
 interface BuildMetadata {
+  runUrl?: string | null;
+  abbrevRef?: string;
+  baseCommitSha?: string;
   prs: BuildMetadataPR[];
   refs_info: Array<RefInfo>;
-};
+}
 
 function sortPullRequests(pullRequests: any[]): any[] {
   return pullRequests.sort((a, b) => a.number - b.number);
@@ -122,7 +127,7 @@ async function handleMergeConflict(prNumber: number, stdout: string, stderr: str
   throw new Error(errorMessage);
 }
 
-async function execStdout(cmd, { cwd }) {
+async function execStdout(cmd: string, { cwd }: { cwd: string }): Promise<string> {
     console.log(`[command]${cmd}`);
     const result = await nodeExec(cmd, { cwd });
     if (result.stderr) {
@@ -171,7 +176,7 @@ async function run() {
         auth: token,
       });
 
-      let foundItems = [];
+      let foundItems: any[] = [];
       if (labels.length > 0) {
         const query = `repo:${owner}/${repo} is:pr is:open ${labels.map(label => `label:"${label}"`).join(' ')}`;
         console.log("Searching for PRs with query:", query);

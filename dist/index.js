@@ -24136,8 +24136,9 @@ var exec = __toESM(require_exec());
 var fs = __toESM(require("fs"));
 var pathModule = __toESM(require("path"));
 var streamBuffer = __toESM(require_streambuffer());
-var { promisify } = require("util");
-var nodeExec = promisify(require("child_process").exec);
+var import_util = require("util");
+var import_child_process = require("child_process");
+var nodeExec = (0, import_util.promisify)(import_child_process.exec);
 function sortPullRequests(pullRequests) {
   return pullRequests.sort((a, b) => a.number - b.number);
 }
