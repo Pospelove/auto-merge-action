@@ -17,6 +17,10 @@ inputs:
     description: 'Whether to skip setting git user.name and user.email. Defaults to false.'
     required: false
     default: 'false'
+  retries:
+    description: 'Number of retries for Octokit requests.'
+    required: false
+    default: '3'
 runs:
   using: 'node20'
   main: 'dist/index.js'

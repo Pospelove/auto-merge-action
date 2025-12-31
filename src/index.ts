@@ -1,5 +1,6 @@
 import * as core from '@actions/core';
 import { Octokit } from '@octokit/rest';
+import { retry } from "@octokit/plugin-retry";
 import * as exec from '@actions/exec';
 import * as fs from "fs";
 import * as pathModule from "path";
@@ -71,7 +72,7 @@ async function handleMergeConflict(prNumber: number, stdout: string, stderr: str
 
   let conflictedFilesInfo = '';
   const conflictedFiles: string[] = [];
-  
+
   if (conflictStatusRes === 0) {
     const statusOutput = conflictedFilesStdout.getContentsAsString('utf8') || '';
     conflictedFiles.push(...statusOutput
@@ -99,7 +100,7 @@ async function handleMergeConflict(prNumber: number, stdout: string, stderr: str
           ignoreReturnCode: true,
           outStream: diffStdout
         });
-        
+
         if (diffRes === 0) {
           const diffOutput = diffStdout.getContentsAsString('utf8') || '';
           if (diffOutput.trim()) {
@@ -141,21 +142,31 @@ async function handleMergeConflict(prNumber: number, stdout: string, stderr: str
 }
 
 async function execStdout(cmd: string, { cwd }: { cwd: string }): Promise<string> {
-    console.log(`[command]${cmd}`);
-    const result = await nodeExec(cmd, { cwd });
-    if (result.stderr) {
-      console.error(result.stderr);
-    }
-    return result.stdout.trim();
+  console.log(`[command]${cmd}`);
+  const result = await nodeExec(cmd, { cwd });
+  if (result.stderr) {
+    console.error(result.stderr);
+  }
+  return result.stdout.trim();
 }
 
 async function run() {
   try {
+    const MyOctokit = Octokit.plugin(retry);
+
+    const octokitsByAuthToken = new Map<string | undefined, InstanceType<typeof MyOctokit>>();
+
     let buildMetadata: BuildMetadata | null = null;
 
     const generateBuildMetadata = core.getInput('generate-build-metadata');
     const repositories: Repository[] = JSON.parse(core.getInput('repositories'));
     let path: string = core.getInput('path');
+    let retries = parseInt(core.getInput('retries'));
+
+    if (!isFinite(retries) || retries < 1 || retries > 8192) {
+      console.warn(`Invalid retries value: ${core.getInput('retries')}. Value must be between 1 and 8192. Using default of 3.`);
+      retries = 3;
+    }
 
     if (!path.endsWith('/')) {
       path += '/';
@@ -185,9 +196,11 @@ async function run() {
       const baseCommitSha = await execStdout('git rev-parse HEAD', { cwd: path });
       console.log({ abbrevRef, baseCommitSha });
 
-      const octokit = new Octokit({
-        auth: token,
-      });
+      const octokit = octokitsByAuthToken.get(token) ?? new MyOctokit({ auth: token, request: { retries } });
+      octokitsByAuthToken.set(token, octokit);
+
+      console.log(`Obtained an Octokit instance with token ${token ? '***' : 'undefined'}`);
+      console.log(`Num Octokit instances cached: ${octokitsByAuthToken.size}`);
 
       let foundItems: Array<{ number: number }> = [];
       if (labels.length > 0) {
