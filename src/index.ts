@@ -150,6 +150,31 @@ async function execStdout(cmd: string, { cwd }: { cwd: string }): Promise<string
   return result.stdout.trim();
 }
 
+async function execWithRetry(command: string, args: string[], path: string, numRetries: number = 5): Promise<void> {
+  let ok = false;
+  const errors = new Array<string>();
+  const cmdDisplay = `${command}${args.length > 0 ? ' ' + args.join(' ') : ''}`;
+  
+  for (let i = 0; i < numRetries && !ok; ++i) {
+    try {
+      await exec.exec(command, args, { cwd: path });
+      ok = true;
+    } catch (e) {
+      if (!`${e}`.includes("failed with exit code")) {
+        throw e;
+      }
+      const errorMsg = `${e}`.split('\n')[0];
+      errors.push(`Attempt ${i + 1}: ${errorMsg}`);
+    }
+  }
+  
+  if (!ok) {
+    console.error(`Command '${cmdDisplay}' failed after ${numRetries} retries:`);
+    errors.forEach(err => console.error(`  ${err}`));
+    throw new Error(`Stopping action after ${errors.length} errors`);
+  }
+}
+
 async function run() {
   try {
     const MyOctokit = Octokit.plugin(retry);
@@ -192,27 +217,7 @@ async function run() {
       await exec.exec('git remote set-url origin', [remoteUrl], { cwd: path });
 
       console.log('[!] Fetching from new origin');
-
-      let ok = false;
-      const errors = new Array<string>();
-      const numRetries = 5;
-      for (let i = 0; i < numRetries && !ok; ++i) {
-        try {
-          await exec.exec('git fetch origin', [], { cwd: path });
-          ok = true;
-        } catch (e) {
-          if (!`${e}`.includes("failed with exit code")) {
-            throw e;
-          }
-          const errorMsg = `${e}`.split('\n')[0];
-          errors.push(`Attempt ${i + 1}: ${errorMsg}`);
-        }
-      }
-      if (!ok) {
-        console.error(`Command 'git fetch origin' failed after ${numRetries} retries:`);
-        errors.forEach(err => console.error(`  ${err}`));
-        throw new Error(`Stopping action after ${errors.length} errors`);
-      }
+      await execWithRetry('git', ['fetch', 'origin'], path);
 
       const abbrevRef = await execStdout('git rev-parse --abbrev-ref HEAD', { cwd: path });
       const baseCommitSha = await execStdout('git rev-parse HEAD', { cwd: path });
