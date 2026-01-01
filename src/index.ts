@@ -187,12 +187,10 @@ async function run() {
       const { repo, labels, token, owner } = repository;
       console.log(`Repository: ${repo}, Labels: ${labels.join(', ')}`);
 
-      // [FIX] Set the remote URL for 'origin' to the current repository in the loop
       const remoteUrl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
       console.log(`[!] Setting remote origin URL to: https://x-access-token:***@github.com/${owner}/${repo}.git`);
       await exec.exec('git remote set-url origin', [remoteUrl], { cwd: path });
 
-      // [FIX] Fetch from the new origin to update local remote-tracking branches
       console.log('[!] Fetching from new origin');
 
       let ok = false;
