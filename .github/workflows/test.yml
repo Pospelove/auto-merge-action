@@ -46,7 +46,7 @@ jobs:
       #     path: skyrim-multiplayer/skymp
 
       - name: Upload build metadata
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: build-metadata.json
           path: build-metadata.json
