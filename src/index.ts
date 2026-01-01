@@ -178,9 +178,6 @@ async function execWithRetry(command: string, args: string[], path: string, numR
       await exec.exec(command, args, { cwd: path });
       ok = true;
     } catch (e) {
-      if (!`${e}`.includes("failed with exit code")) {
-        throw e;
-      }
       const errorMsg = `${e}`.split('\n')[0];
       errors.push(`Attempt ${i + 1}: ${errorMsg}`);
       
