@@ -25266,6 +25266,148 @@ var pathModule = __toESM(require("path"));
 var streamBuffer = __toESM(require_streambuffer());
 var import_util = require("util");
 var import_child_process = require("child_process");
+
+// node_modules/yocto-queue/index.js
+var Node = class {
+  value;
+  next;
+  constructor(value) {
+    this.value = value;
+  }
+};
+var Queue = class {
+  #head;
+  #tail;
+  #size;
+  constructor() {
+    this.clear();
+  }
+  enqueue(value) {
+    const node = new Node(value);
+    if (this.#head) {
+      this.#tail.next = node;
+      this.#tail = node;
+    } else {
+      this.#head = node;
+      this.#tail = node;
+    }
+    this.#size++;
+  }
+  dequeue() {
+    const current = this.#head;
+    if (!current) {
+      return;
+    }
+    this.#head = this.#head.next;
+    this.#size--;
+    if (!this.#head) {
+      this.#tail = void 0;
+    }
+    return current.value;
+  }
+  peek() {
+    if (!this.#head) {
+      return;
+    }
+    return this.#head.value;
+  }
+  clear() {
+    this.#head = void 0;
+    this.#tail = void 0;
+    this.#size = 0;
+  }
+  get size() {
+    return this.#size;
+  }
+  *[Symbol.iterator]() {
+    let current = this.#head;
+    while (current) {
+      yield current.value;
+      current = current.next;
+    }
+  }
+  *drain() {
+    while (this.#head) {
+      yield this.dequeue();
+    }
+  }
+};
+
+// node_modules/p-limit/index.js
+function pLimit(concurrency) {
+  validateConcurrency(concurrency);
+  const queue = new Queue();
+  let activeCount = 0;
+  const resumeNext = () => {
+    if (activeCount < concurrency && queue.size > 0) {
+      activeCount++;
+      queue.dequeue()();
+    }
+  };
+  const next = () => {
+    activeCount--;
+    resumeNext();
+  };
+  const run2 = async (function_, resolve, arguments_) => {
+    const result = (async () => function_(...arguments_))();
+    resolve(result);
+    try {
+      await result;
+    } catch {
+    }
+    next();
+  };
+  const enqueue = (function_, resolve, arguments_) => {
+    new Promise((internalResolve) => {
+      queue.enqueue(internalResolve);
+    }).then(run2.bind(void 0, function_, resolve, arguments_));
+    if (activeCount < concurrency) {
+      resumeNext();
+    }
+  };
+  const generator = (function_, ...arguments_) => new Promise((resolve) => {
+    enqueue(function_, resolve, arguments_);
+  });
+  Object.defineProperties(generator, {
+    activeCount: {
+      get: () => activeCount
+    },
+    pendingCount: {
+      get: () => queue.size
+    },
+    clearQueue: {
+      value() {
+        queue.clear();
+      }
+    },
+    concurrency: {
+      get: () => concurrency,
+      set(newConcurrency) {
+        validateConcurrency(newConcurrency);
+        concurrency = newConcurrency;
+        queueMicrotask(() => {
+          while (activeCount < concurrency && queue.size > 0) {
+            resumeNext();
+          }
+        });
+      }
+    },
+    map: {
+      async value(iterable, function_) {
+        const promises = Array.from(iterable, (value, index) => this(function_, value, index));
+        return Promise.all(promises);
+      }
+    }
+  });
+  return generator;
+}
+function validateConcurrency(concurrency) {
+  if (!((Number.isInteger(concurrency) || concurrency === Number.POSITIVE_INFINITY) && concurrency > 0)) {
+    throw new TypeError("Expected `concurrency` to be a number from 1 and up");
+  }
+}
+
+// src/index.ts
 var nodeExec = (0, import_util.promisify)(import_child_process.exec);
 function sortPullRequests(pullRequests) {
   return pullRequests.sort((a, b) => a.number - b.number);
@@ -25391,9 +25533,11 @@ async function run() {
     let path = core.getInput("path");
     let retries = parseInt(core.getInput("retries"));
     let fetchRetries = parseInt(core.getInput("fetch-retries"));
+    let concurrencyLimit = parseInt(core.getInput("concurrency-limit"));
     const minRetries = 1;
     const maxRetries = 8192;
     const defaultRetries = 5;
+    const defaultConcurrencyLimit = 10;
     if (!isFinite(retries) || retries < minRetries || retries > maxRetries) {
       console.warn(`Invalid retries value: ${core.getInput("retries")}. Value must be between ${minRetries} and ${maxRetries}. Using default of ${defaultRetries}.`);
       retries = defaultRetries;
@@ -25402,6 +25546,11 @@ async function run() {
       console.warn(`Invalid fetch-retries value: ${core.getInput("fetch-retries")}. Value must be between ${minRetries} and ${maxRetries}. Using default of ${defaultRetries}.`);
       fetchRetries = defaultRetries;
     }
+    if (!isFinite(concurrencyLimit) || concurrencyLimit < 1) {
+      console.warn(`Invalid concurrency-limit value: ${core.getInput("concurrency-limit")}. Using default of ${defaultConcurrencyLimit}.`);
+      concurrencyLimit = defaultConcurrencyLimit;
+    }
+    const limit = pLimit(concurrencyLimit);
     if (!path.endsWith("/")) {
       path += "/";
     }
@@ -25438,11 +25587,11 @@ async function run() {
       }
       console.log(`Found ${foundItems.length} PRs with required labels`);
       const pullRequests = await Promise.all(foundItems.map(
-        (issue) => octokit.rest.pulls.get({
+        (issue) => limit(() => octokit.rest.pulls.get({
           owner,
           repo,
           pull_number: issue.number
-        })
+        }))
       ));
       const pullRequestsData = sortPullRequests(pullRequests.map((pr) => pr.data));
       console.log(`Found ${pullRequestsData.length} open PRs with required labels`);
@@ -25483,7 +25632,7 @@ async function run() {
         for (const pr of pullRequestsData) {
           buildMetadata.prs.push(pr);
         }
-        const promises = pullRequestsData.map(async (pr) => {
+        const promises = pullRequestsData.map((pr) => limit(async () => {
           const commit = await octokit.rest.git.getCommit({
             owner,
             repo,
@@ -25503,7 +25652,7 @@ async function run() {
               prTitle: pr.title
             }
           };
-        });
+        }));
         const results = await Promise.all(promises);
         results.forEach((result) => {
           buildMetadata?.refs_info.push(result.info);

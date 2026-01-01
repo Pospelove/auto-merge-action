@@ -20,6 +20,7 @@
     "@actions/exec": "^1.1.1",
     "@octokit/plugin-retry": "^8.0.3",
     "@octokit/rest": "^22.0.1",
+    "p-limit": "^7.2.0",
     "stream-buffers": "^3.0.3"
   }
 }

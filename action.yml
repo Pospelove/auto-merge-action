@@ -25,6 +25,10 @@ inputs:
     description: 'Number of retries for git fetch operations.'
     required: false
     default: '5'
+  concurrency-limit:
+    description: 'Maximum number of concurrent API requests.'
+    required: false
+    default: '10'
 runs:
   using: 'node20'
   main: 'dist/index.js'

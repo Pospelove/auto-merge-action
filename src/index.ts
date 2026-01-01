@@ -7,6 +7,7 @@ import * as pathModule from "path";
 import * as streamBuffer from "stream-buffers";
 import { promisify } from 'util';
 import { exec as cpExec } from 'child_process';
+import pLimit from 'p-limit';
 
 const nodeExec = promisify(cpExec);
 
@@ -201,10 +202,12 @@ async function run() {
     let path: string = core.getInput('path');
     let retries = parseInt(core.getInput('retries'));
     let fetchRetries = parseInt(core.getInput('fetch-retries'));
+    let concurrencyLimit = parseInt(core.getInput('concurrency-limit'));
 
     const minRetries = 1;
     const maxRetries = 8192;
     const defaultRetries = 5;
+    const defaultConcurrencyLimit = 10;
 
     if (!isFinite(retries) || retries < minRetries || retries > maxRetries) {
       console.warn(`Invalid retries value: ${core.getInput('retries')}. Value must be between ${minRetries} and ${maxRetries}. Using default of ${defaultRetries}.`);
@@ -215,6 +218,13 @@ async function run() {
       console.warn(`Invalid fetch-retries value: ${core.getInput('fetch-retries')}. Value must be between ${minRetries} and ${maxRetries}. Using default of ${defaultRetries}.`);
       fetchRetries = defaultRetries;
     }
+
+    if (!isFinite(concurrencyLimit) || concurrencyLimit < 1) {
+      console.warn(`Invalid concurrency-limit value: ${core.getInput('concurrency-limit')}. Using default of ${defaultConcurrencyLimit}.`);
+      concurrencyLimit = defaultConcurrencyLimit;
+    }
+
+    const limit = pLimit(concurrencyLimit);
 
     if (!path.endsWith('/')) {
       path += '/';
@@ -263,11 +273,11 @@ async function run() {
       console.log(`Found ${foundItems.length} PRs with required labels`);
 
       const pullRequests = await Promise.all(foundItems.map(issue =>
-        octokit.rest.pulls.get({
+        limit(() => octokit.rest.pulls.get({
           owner,
           repo,
           pull_number: issue.number
-        })
+        }))
       ));
 
       const pullRequestsData = sortPullRequests(pullRequests.map(pr => pr.data));
@@ -320,7 +330,7 @@ async function run() {
           buildMetadata.prs.push(pr);
         }
 
-        const promises = pullRequestsData.map(async (pr) => {
+        const promises = pullRequestsData.map((pr) => limit(async () => {
           const commit = await octokit.rest.git.getCommit({
             owner,
             repo,
@@ -340,7 +350,7 @@ async function run() {
               prTitle: pr.title
             }
           };
-        });
+        }));
 
         const results = await Promise.all(promises);
         results.forEach(result => {
