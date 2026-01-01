@@ -25392,7 +25392,7 @@ async function run() {
           if (!`${e}`.includes("failed with exit code")) {
             throw e;
           }
-          errors = errors.concat([e]);
+          errors = errors.concat(e);
         }
       }
       if (!ok) {
