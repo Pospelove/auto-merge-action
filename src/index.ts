@@ -187,28 +187,14 @@ async function run() {
       const { repo, labels, token, owner } = repository;
       console.log(`Repository: ${repo}, Labels: ${labels.join(', ')}`);
 
+      // [FIX] Set the remote URL for 'origin' to the current repository in the loop
       const remoteUrl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
       console.log(`[!] Setting remote origin URL to: https://x-access-token:***@github.com/${owner}/${repo}.git`);
       await exec.exec('git remote set-url origin', [remoteUrl], { cwd: path });
 
+      // [FIX] Fetch from the new origin to update local remote-tracking branches
       console.log('[!] Fetching from new origin');
-
-      const fetchOriginStdout = new streamBuffer.WritableStreamBuffer();
-      const fetchOriginStderr = new streamBuffer.WritableStreamBuffer();
-
-      const fetchOriginOptions: exec.ExecOptions = {
-        cwd: path,
-        ignoreReturnCode: true,
-        outStream: fetchOriginStdout,
-        errStream: fetchOriginStderr
-      };
-
-      let res = await exec.exec('git fetch origin', [], fetchOriginOptions);
-      if (res !== 0) {
-        const stdout = fetchOriginStdout.getContentsAsString('utf8') || '';
-        const stderr = fetchOriginStderr.getContentsAsString('utf8') || '';
-        throw new Error(`Failed to fetch origin. stdout: ${stdout}, stderr: ${stderr}`);
-      }
+      await exec.exec('git fetch origin', [], { cwd: path });
 
       const abbrevRef = await execStdout('git rev-parse --abbrev-ref HEAD', { cwd: path });
       const baseCommitSha = await execStdout('git rev-parse HEAD', { cwd: path });
@@ -266,6 +252,7 @@ async function run() {
 
         // Fetch the PR branch
         console.log(`[!] Fetching PR #${prNumber} from remote`);
+        // [FIX] 'origin' now correctly points to the right repo (from the fix above)
         let res = await exec.exec(`git fetch origin pull/${prNumber}/head:${prBranch}`, [], options);
         if (res !== 0) {
           const stdout = fetchStdout.getContentsAsString('utf8') || '';

@@ -25381,20 +25381,7 @@ async function run() {
       console.log(`[!] Setting remote origin URL to: https://x-access-token:***@github.com/${owner}/${repo}.git`);
       await exec.exec("git remote set-url origin", [remoteUrl], { cwd: path });
       console.log("[!] Fetching from new origin");
-      const fetchOriginStdout = new streamBuffer.WritableStreamBuffer();
-      const fetchOriginStderr = new streamBuffer.WritableStreamBuffer();
-      const fetchOriginOptions = {
-        cwd: path,
-        ignoreReturnCode: true,
-        outStream: fetchOriginStdout,
-        errStream: fetchOriginStderr
-      };
-      let res = await exec.exec("git fetch origin", [], fetchOriginOptions);
-      if (res !== 0) {
-        const stdout = fetchOriginStdout.getContentsAsString("utf8") || "";
-        const stderr = fetchOriginStderr.getContentsAsString("utf8") || "";
-        throw new Error(`Failed to fetch origin. stdout: ${stdout}, stderr: ${stderr}`);
-      }
+      await exec.exec("git fetch origin", [], { cwd: path });
       const abbrevRef = await execStdout("git rev-parse --abbrev-ref HEAD", { cwd: path });
       const baseCommitSha = await execStdout("git rev-parse HEAD", { cwd: path });
       console.log({ abbrevRef, baseCommitSha });
@@ -25438,8 +25425,8 @@ async function run() {
           errStream: fetchStderr
         };
         console.log(`[!] Fetching PR #${prNumber} from remote`);
-        let res2 = await exec.exec(`git fetch origin pull/${prNumber}/head:${prBranch}`, [], options);
-        if (res2 !== 0) {
+        let res = await exec.exec(`git fetch origin pull/${prNumber}/head:${prBranch}`, [], options);
+        if (res !== 0) {
           const stdout = fetchStdout.getContentsAsString("utf8") || "";
           const stderr = fetchStderr.getContentsAsString("utf8") || "";
           throw new Error(`Failed to fetch PR #${prNumber}. stdout: ${stdout}, stderr: ${stderr}`);
@@ -25447,13 +25434,13 @@ async function run() {
         console.log(`[!] Merging branch ${prBranch} (${prSha})`);
         const gitMergeStdout = new streamBuffer.WritableStreamBuffer();
         const gitMergeStderr = new streamBuffer.WritableStreamBuffer();
-        res2 = await exec.exec(`git merge ${prBranch}`, [], {
+        res = await exec.exec(`git merge ${prBranch}`, [], {
           cwd: path,
           ignoreReturnCode: true,
           outStream: gitMergeStdout,
           errStream: gitMergeStderr
         });
-        if (res2 !== 0) {
+        if (res !== 0) {
           const stdout = gitMergeStdout.getContentsAsString("utf8") || "";
           const stderr = gitMergeStderr.getContentsAsString("utf8") || "";
           await handleMergeConflict(prNumber, stdout, stderr, path);
