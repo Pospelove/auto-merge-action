@@ -11071,7 +11071,7 @@ var require_mock_interceptor = __commonJS({
 var require_mock_client = __commonJS({
   "node_modules/undici/lib/mock/mock-client.js"(exports2, module2) {
     "use strict";
-    var { promisify: promisify2 } = require("util");
+    var { promisify } = require("util");
     var Client = require_client();
     var { buildMockDispatch } = require_mock_utils();
     var {
@@ -11111,7 +11111,7 @@ var require_mock_client = __commonJS({
         return new MockInterceptor(opts, this[kDispatches]);
       }
       async [kClose]() {
-        await promisify2(this[kOriginalClose])();
+        await promisify(this[kOriginalClose])();
         this[kConnected] = 0;
         this[kMockAgent][Symbols.kClients].delete(this[kOrigin]);
       }
@@ -11124,7 +11124,7 @@ var require_mock_client = __commonJS({
 var require_mock_pool = __commonJS({
   "node_modules/undici/lib/mock/mock-pool.js"(exports2, module2) {
     "use strict";
-    var { promisify: promisify2 } = require("util");
+    var { promisify } = require("util");
     var Pool = require_pool();
     var { buildMockDispatch } = require_mock_utils();
     var {
@@ -11164,7 +11164,7 @@ var require_mock_pool = __commonJS({
         return new MockInterceptor(opts, this[kDispatches]);
       }
       async [kClose]() {
-        await promisify2(this[kOriginalClose])();
+        await promisify(this[kOriginalClose])();
         this[kConnected] = 0;
         this[kMockAgent][Symbols.kClients].delete(this[kOrigin]);
       }
@@ -25264,8 +25264,6 @@ var exec = __toESM(require_exec());
 var fs = __toESM(require("fs"));
 var pathModule = __toESM(require("path"));
 var streamBuffer = __toESM(require_streambuffer());
-var import_util = require("util");
-var import_child_process = require("child_process");
 
 // node_modules/yocto-queue/index.js
 var Node = class {
@@ -25408,7 +25406,6 @@ function validateConcurrency(concurrency) {
 }
 
 // src/index.ts
-var nodeExec = (0, import_util.promisify)(import_child_process.exec);
 function sortPullRequests(pullRequests) {
   return pullRequests.sort((a, b) => a.number - b.number);
 }
@@ -25484,13 +25481,27 @@ ${"=".repeat(80)}`);
   const errorMessage = `Merge of PR #${prNumber} resulted in conflicts.${conflictedFilesInfo}`;
   throw new Error(errorMessage);
 }
-async function execStdout(cmd, { cwd }) {
-  console.log(`[command]${cmd}`);
-  const result = await nodeExec(cmd, { cwd });
-  if (result.stderr) {
-    console.error(result.stderr);
+async function execStdout(command, args, { cwd }) {
+  const stdoutChunks = [];
+  const stderrChunks = [];
+  const options = {
+    cwd,
+    listeners: {
+      stdout: (data) => {
+        stdoutChunks.push(new Uint8Array(data));
+      },
+      stderr: (data) => {
+        stderrChunks.push(new Uint8Array(data));
+      }
+    }
+  };
+  await exec.exec(command, args, options);
+  const stdout = Buffer.concat(stdoutChunks).toString();
+  const stderr = Buffer.concat(stderrChunks).toString();
+  if (stderr) {
+    console.error(stderr);
   }
-  return result.stdout.trim();
+  return stdout.trim();
 }
 async function execWithRetry(command, args, path, numRetries) {
   let ok = false;
@@ -25567,8 +25578,8 @@ async function run() {
       await exec.exec("git remote set-url origin", [remoteUrl], { cwd: path });
       console.log("[!] Fetching from new origin");
       await execWithRetry("git", ["fetch", "origin"], path, fetchRetries);
-      const abbrevRef = await execStdout("git rev-parse --abbrev-ref HEAD", { cwd: path });
-      const baseCommitSha = await execStdout("git rev-parse HEAD", { cwd: path });
+      const abbrevRef = await execStdout("git", ["rev-parse", "--abbrev-ref", "HEAD"], { cwd: path });
+      const baseCommitSha = await execStdout("git", ["rev-parse", "HEAD"], { cwd: path });
       console.log({ abbrevRef, baseCommitSha });
       const octokit = octokitsByAuthToken.get(token) ?? new MyOctokit({ auth: token, request: { retries } });
       octokitsByAuthToken.set(token, octokit);

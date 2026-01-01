@@ -5,11 +5,7 @@ import * as exec from '@actions/exec';
 import * as fs from "fs";
 import * as pathModule from "path";
 import * as streamBuffer from "stream-buffers";
-import { promisify } from 'util';
-import { exec as cpExec } from 'child_process';
 import pLimit from 'p-limit';
-
-const nodeExec = promisify(cpExec);
 
 interface Repository {
   owner: string,
@@ -142,13 +138,31 @@ async function handleMergeConflict(prNumber: number, stdout: string, stderr: str
   throw new Error(errorMessage);
 }
 
-async function execStdout(cmd: string, { cwd }: { cwd: string }): Promise<string> {
-  console.log(`[command]${cmd}`);
-  const result = await nodeExec(cmd, { cwd });
-  if (result.stderr) {
-    console.error(result.stderr);
+async function execStdout(command: string, args: string[], { cwd }: { cwd: string }): Promise<string> {
+  const stdoutChunks: Uint8Array[] = [];
+  const stderrChunks: Uint8Array[] = [];
+
+  const options = {
+    cwd,
+    listeners: {
+      stdout: (data: Buffer) => {
+        stdoutChunks.push(new Uint8Array(data));
+      },
+      stderr: (data: Buffer) => {
+        stderrChunks.push(new Uint8Array(data));
+      }
+    }
+  };
+
+  await exec.exec(command, args, options);
+
+  const stdout = Buffer.concat(stdoutChunks).toString();
+  const stderr = Buffer.concat(stderrChunks).toString();
+
+  if (stderr) {
+    console.error(stderr);
   }
-  return result.stdout.trim();
+  return stdout.trim();
 }
 
 async function execWithRetry(command: string, args: string[], path: string, numRetries: number): Promise<void> {
@@ -248,8 +262,8 @@ async function run() {
       console.log('[!] Fetching from new origin');
       await execWithRetry('git', ['fetch', 'origin'], path, fetchRetries);
 
-      const abbrevRef = await execStdout('git rev-parse --abbrev-ref HEAD', { cwd: path });
-      const baseCommitSha = await execStdout('git rev-parse HEAD', { cwd: path });
+      const abbrevRef = await execStdout('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: path });
+      const baseCommitSha = await execStdout('git', ['rev-parse', 'HEAD'], { cwd: path });
       console.log({ abbrevRef, baseCommitSha });
 
       const octokit = octokitsByAuthToken.get(token) ?? new MyOctokit({ auth: token, request: { retries } });
