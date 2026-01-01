@@ -196,7 +196,7 @@ async function run() {
       console.log('[!] Fetching from new origin');
 
       let ok = false;
-      let errors = new Array<unknown>();
+      const errors = new Array<unknown>();
       const numRetries = 5;
       for (let i = 0; i < numRetries && !ok; ++i) {
         try {
@@ -206,7 +206,7 @@ async function run() {
           if (!`${e}`.includes("failed with exit code")) {
             throw e;
           }
-          errors = errors.concat(e);
+          errors.push(e);
         }
       }
       if (!ok) {

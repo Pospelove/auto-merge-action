@@ -25382,7 +25382,7 @@ async function run() {
       await exec.exec("git remote set-url origin", [remoteUrl], { cwd: path });
       console.log("[!] Fetching from new origin");
       let ok = false;
-      let errors = new Array();
+      const errors = new Array();
       const numRetries = 5;
       for (let i = 0; i < numRetries && !ok; ++i) {
         try {
@@ -25392,7 +25392,7 @@ async function run() {
           if (!`${e}`.includes("failed with exit code")) {
             throw e;
           }
-          errors = errors.concat(e);
+          errors.push(e);
         }
       }
       if (!ok) {
