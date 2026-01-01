@@ -163,9 +163,13 @@ async function run() {
     let path: string = core.getInput('path');
     let retries = parseInt(core.getInput('retries'));
 
-    if (!isFinite(retries) || retries < 1 || retries > 8192) {
-      console.warn(`Invalid retries value: ${core.getInput('retries')}. Value must be between 1 and 8192. Using default of 3.`);
-      retries = 3;
+    const minRetries = 1;
+    const maxRetries = 8192;
+    const defaultRetries = 5;
+
+    if (!isFinite(retries) || retries < minRetries || retries > maxRetries) {
+      console.warn(`Invalid retries value: ${core.getInput('retries')}. Value must be between ${minRetries} and ${maxRetries}. Using default of ${defaultRetries}.`);
+      retries = defaultRetries;
     }
 
     if (!path.endsWith('/')) {
