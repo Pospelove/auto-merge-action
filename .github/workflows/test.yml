@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Checkout skyrim-multiplayer/skymp
-      - uses: actions/checkout@v4
+        uses: actions/checkout@v4
         with:
           repository: skyrim-multiplayer/skymp
           submodules: 'true'
