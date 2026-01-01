@@ -196,7 +196,7 @@ async function run() {
       console.log('[!] Fetching from new origin');
 
       let ok = false;
-      const errors = new Array<unknown>();
+      const errors = new Array<string>();
       const numRetries = 5;
       for (let i = 0; i < numRetries && !ok; ++i) {
         try {
@@ -206,12 +206,13 @@ async function run() {
           if (!`${e}`.includes("failed with exit code")) {
             throw e;
           }
-          errors.push(e);
+          const errorMsg = `${e}`.split('\n')[0];
+          errors.push(`Attempt ${i + 1}: ${errorMsg}`);
         }
       }
       if (!ok) {
-        console.error(`Command 'git fetch origin' failed after ${numRetries} retries`);
-        errors.forEach(console.error);
+        console.error(`Command 'git fetch origin' failed after ${numRetries} retries:`);
+        errors.forEach(err => console.error(`  ${err}`));
         throw new Error(`Stopping action after ${errors.length} errors`);
       }
 

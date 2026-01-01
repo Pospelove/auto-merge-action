@@ -25392,12 +25392,13 @@ async function run() {
           if (!`${e}`.includes("failed with exit code")) {
             throw e;
           }
-          errors.push(e);
+          const errorMsg = `${e}`.split("\n")[0];
+          errors.push(`Attempt ${i + 1}: ${errorMsg}`);
         }
       }
       if (!ok) {
-        console.error(`Command 'git fetch origin' failed after ${numRetries} retries`);
-        errors.forEach(console.error);
+        console.error(`Command 'git fetch origin' failed after ${numRetries} retries:`);
+        errors.forEach((err) => console.error(`  ${err}`));
         throw new Error(`Stopping action after ${errors.length} errors`);
       }
       const abbrevRef = await execStdout("git rev-parse --abbrev-ref HEAD", { cwd: path });
