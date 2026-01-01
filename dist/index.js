@@ -25350,7 +25350,7 @@ async function execStdout(cmd, { cwd }) {
   }
   return result.stdout.trim();
 }
-async function execWithRetry(command, args, path, numRetries = 5) {
+async function execWithRetry(command, args, path, numRetries) {
   let ok = false;
   const errors = new Array();
   const cmdDisplay = `${command}${args.length > 0 ? " " + args.join(" ") : ""}`;
@@ -25417,7 +25417,7 @@ async function run() {
       console.log(`[!] Setting remote origin URL to: https://x-access-token:***@github.com/${owner}/${repo}.git`);
       await exec.exec("git remote set-url origin", [remoteUrl], { cwd: path });
       console.log("[!] Fetching from new origin");
-      await execWithRetry("git", ["fetch", "origin"], path);
+      await execWithRetry("git", ["fetch", "origin"], path, fetchRetries);
       const abbrevRef = await execStdout("git rev-parse --abbrev-ref HEAD", { cwd: path });
       const baseCommitSha = await execStdout("git rev-parse HEAD", { cwd: path });
       console.log({ abbrevRef, baseCommitSha });

@@ -150,7 +150,7 @@ async function execStdout(cmd: string, { cwd }: { cwd: string }): Promise<string
   return result.stdout.trim();
 }
 
-async function execWithRetry(command: string, args: string[], path: string, numRetries: number = 5): Promise<void> {
+async function execWithRetry(command: string, args: string[], path: string, numRetries: number): Promise<void> {
   let ok = false;
   const errors = new Array<string>();
   const cmdDisplay = `${command}${args.length > 0 ? ' ' + args.join(' ') : ''}`;
@@ -236,7 +236,7 @@ async function run() {
       await exec.exec('git remote set-url origin', [remoteUrl], { cwd: path });
 
       console.log('[!] Fetching from new origin');
-      await execWithRetry('git', ['fetch', 'origin'], path);
+      await execWithRetry('git', ['fetch', 'origin'], path, fetchRetries);
 
       const abbrevRef = await execStdout('git rev-parse --abbrev-ref HEAD', { cwd: path });
       const baseCommitSha = await execStdout('git rev-parse HEAD', { cwd: path });
