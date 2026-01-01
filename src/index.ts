@@ -187,6 +187,7 @@ async function run() {
     const repositories: Repository[] = JSON.parse(core.getInput('repositories'));
     let path: string = core.getInput('path');
     let retries = parseInt(core.getInput('retries'));
+    let fetchRetries = parseInt(core.getInput('fetch-retries'));
 
     const minRetries = 1;
     const maxRetries = 8192;
@@ -195,6 +196,11 @@ async function run() {
     if (!isFinite(retries) || retries < minRetries || retries > maxRetries) {
       console.warn(`Invalid retries value: ${core.getInput('retries')}. Value must be between ${minRetries} and ${maxRetries}. Using default of ${defaultRetries}.`);
       retries = defaultRetries;
+    }
+
+    if (!isFinite(fetchRetries) || fetchRetries < minRetries || fetchRetries > maxRetries) {
+      console.warn(`Invalid fetch-retries value: ${core.getInput('fetch-retries')}. Value must be between ${minRetries} and ${maxRetries}. Using default of ${defaultRetries}.`);
+      fetchRetries = defaultRetries;
     }
 
     if (!path.endsWith('/')) {
@@ -264,7 +270,7 @@ async function run() {
         console.log(`[!] Processing PR #${prNumber} from ${prAuthor} with branch ${prBranch}`);
 
         console.log(`[!] Fetching PR #${prNumber} from remote`);
-        await exec.exec(`git fetch origin pull/${prNumber}/head:${prBranch}`, [], { cwd: path });
+        await execWithRetry('git', ['fetch', 'origin', `pull/${prNumber}/head:${prBranch}`], path, fetchRetries);
 
         // Merge the PR branch
         console.log(`[!] Merging branch ${prBranch} (${prSha})`);
