@@ -25663,6 +25663,7 @@ async function run() {
         }));
         const results = await Promise.all(promises);
         results.forEach((result) => {
+          console.log(`Fetched commit sha: ${result.info.lastCommitSha}`);
           buildMetadata?.refs_info.push(result.info);
         });
       }
