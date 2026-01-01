@@ -13,11 +13,12 @@ jobs:
 
     steps:
       - name: Checkout skyrim-multiplayer/skymp
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
-          repository: 'skyrim-multiplayer/skymp'
-          ref: 'main'
-          path: 'skyrim-multiplayer/skymp'
+          repository: skyrim-multiplayer/skymp
+          submodules: 'true'
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Merge Pull Requests
         uses: Pospelove/auto-merge-action@main
