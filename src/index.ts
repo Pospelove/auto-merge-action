@@ -154,7 +154,10 @@ async function execWithRetry(command: string, args: string[], path: string, numR
   let ok = false;
   const errors = new Array<string>();
   const cmdDisplay = `${command}${args.length > 0 ? ' ' + args.join(' ') : ''}`;
-  
+
+  const baseDelayMs = 1000;
+  const maxDelayMs = 30000;
+
   for (let i = 0; i < numRetries && !ok; ++i) {
     try {
       await exec.exec(command, args, { cwd: path });
@@ -165,6 +168,16 @@ async function execWithRetry(command: string, args: string[], path: string, numR
       }
       const errorMsg = `${e}`.split('\n')[0];
       errors.push(`Attempt ${i + 1}: ${errorMsg}`);
+      
+      // Apply exponential backoff with jitter if not the last attempt
+      if (i < numRetries - 1) {
+        const exponentialDelay = Math.min(maxDelayMs, baseDelayMs * Math.pow(2, i));
+        const jitter = Math.random() * 1000; // 0-1000ms jitter
+        const totalDelay = exponentialDelay + jitter;
+        
+        console.log(`Waiting ${Math.round(totalDelay)}ms before retry ${i + 2}/${numRetries}...`);
+        await new Promise(resolve => setTimeout(resolve, totalDelay));
+      }
     }
   }
   
